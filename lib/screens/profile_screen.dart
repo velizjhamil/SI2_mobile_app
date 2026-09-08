@@ -1,29 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+
+class SocioProfileScreen extends StatefulWidget {
+  const SocioProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<SocioProfileScreen> createState() => _SocioProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _SocioProfileScreenState extends State<SocioProfileScreen> {
   bool _twoFactorEnabled = true;
   bool _biometricsEnabled = true;
+  bool _notificationsEnabled = true;
   bool _copied = false;
 
-  void _copyId() {
+  // Datos del Socio (idealmente obtenidos desde un AuthProvider / UserState)
+  final String _nombreSocio = 'Juan Carlos Pérez';
+  final String _tipoSocio = 'Socio Platinum - Ahorrista';
+  final String _codigoSocio = 'SOC-884920-BO';
+
+  void _copySocioId() {
+    Clipboard.setData(ClipboardData(text: _codigoSocio));
     setState(() => _copied = true);
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('ID FST-INST-884920-BO copiado al portapapeles'),
-        duration: Duration(seconds: 1),
+      SnackBar(
+        content: Text('Código de socio $_codigoSocio copiado'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
       ),
     );
+
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) setState(() => _copied = false);
     });
@@ -49,7 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Tarjeta Principal de Perfil (Dra. Elena Rossi)
+              // 1. Tarjeta Principal del Socio
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -59,20 +71,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: Row(
                   children: [
-                    // Avatar con foto
+                    // Avatar con iniciales del Socio (sin foto de perfil)
                     Container(
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.forestGreen.withOpacity(0.5), width: 2),
+                        color: accentColor.withOpacity(0.15),
+                        border: Border.all(color: accentColor.withOpacity(0.5), width: 2),
                       ),
-                      child: ClipOval(
-                        child: Image.network(
-                          'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 36, color: Colors.white),
-                        ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _nombreSocio.split(' ').map((e) => e[0]).take(2).join(),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: accentColor),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -80,28 +91,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                'Dra. Elena Rossi',
-                                style: GoogleFonts.manrope(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: textColor,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            _nombreSocio,
+                            style: GoogleFonts.manrope(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.forestGreen.withOpacity(0.15),
+                              color: accentColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: AppColors.forestGreen.withOpacity(0.3)),
+                              border: Border.all(color: accentColor.withOpacity(0.3)),
                             ),
                             child: Text(
-                              'Oficial & Gestor Autorizado',
+                              _tipoSocio,
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -109,19 +116,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Forest Microfinanzas & Banca Digital S.A.',
-                            style: TextStyle(fontSize: 11, color: subtextColor),
-                          ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 6),
                           GestureDetector(
-                            onTap: _copyId,
+                            onTap: _copySocioId,
                             child: Row(
                               children: [
                                 Text(
-                                  'ID: FST-INST-884920-BO',
-                                  style: TextStyle(fontSize: 10, color: subtextColor, fontFamily: 'monospace'),
+                                  'Código: $_codigoSocio',
+                                  style: TextStyle(fontSize: 11, color: subtextColor, fontFamily: 'monospace'),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
@@ -139,18 +141,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 2. Personalización de Interfaz (SELECTOR BLANCO / NEGRO - MODO CLARO / OSCURO)
-              Text(
-                'PERSONALIZACIÓN DE INTERFAZ',
-                style: GoogleFonts.manrope(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
-                  color: subtextColor,
-                ),
-              ),
+              // 2. Sección: Preferencias de Interfaz
+              _buildSectionHeader('PREFERENCIAS DE INTERFAZ', subtextColor),
               const SizedBox(height: 8),
-
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -159,205 +152,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   border: Border.all(color: borderColor),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: AppColors.forestGreen.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            isDark ? Icons.nightlight_round : Icons.wb_sunny_rounded,
-                            color: accentColor,
-                            size: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Tema Visual de la Aplicación',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
-                            ),
-                            Text(
-                              isDark ? 'Modo Oscuro (Dark Forest)' : 'Modo Claro (Light Clean)',
-                              style: TextStyle(fontSize: 11, color: accentColor, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    // Selector Segmentado de Botones Claro / Oscuro
                     Container(
-                      padding: const EdgeInsets.all(3),
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF272B29) : const Color(0xFFE8EDE9),
+                        color: AppColors.forestGreen.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Row(
+                      child: Icon(
+                        isDark ? Icons.nightlight_round : Icons.wb_sunny_rounded,
+                        color: accentColor,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Botón Claro (Blanco)
-                          GestureDetector(
-                            onTap: () => themeProvider.setDarkMode(false),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: !isDark ? Colors.white : Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: !isDark ? [const BoxShadow(color: Colors.black12, blurRadius: 4)] : null,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.wb_sunny, size: 13, color: !isDark ? AppColors.forestGreen : subtextColor),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Claro',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: !isDark ? AppColors.forestGreen : subtextColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          Text(
+                            'Tema de la Aplicación',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+                            overflow: TextOverflow.ellipsis,
                           ),
-
-                          // Botón Oscuro (Negro)
-                          GestureDetector(
-                            onTap: () => themeProvider.setDarkMode(true),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.forestGreen : Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: isDark ? [const BoxShadow(color: Colors.black26, blurRadius: 4)] : null,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.nightlight_round, size: 13, color: isDark ? Colors.white : subtextColor),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Oscuro',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark ? Colors.white : subtextColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          Text(
+                            isDark ? 'Modo Oscuro' : 'Modo Claro',
+                            style: TextStyle(fontSize: 11, color: accentColor, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    _buildThemeSegmentedPicker(themeProvider, isDark, subtextColor),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
 
-              // 3. Seguridad y Autenticación
-              Text(
-                'SEGURIDAD Y AUTENTICACIÓN',
-                style: GoogleFonts.manrope(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
-                  color: subtextColor,
-                ),
-              ),
+              // 3. Sección: Seguridad de la Cuenta del Socio
+              _buildSectionHeader('SEGURIDAD DE LA CUENTA', subtextColor),
               const SizedBox(height: 8),
-
-              Container(
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: borderColor),
-                ),
-                child: Column(
-                  children: [
-                    // Switch 2FA
-                    ListTile(
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: AppColors.forestGreen.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(Icons.verified_user_outlined, color: accentColor, size: 18),
-                      ),
-                      title: Text('Doble Factor de Autenticación (2FA)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-                      subtitle: Text('Verificación mediante Token OTP y SMS Seguro', style: TextStyle(fontSize: 11, color: subtextColor)),
-                      trailing: Switch(
-                        value: _twoFactorEnabled,
-                        activeColor: AppColors.forestGreen,
-                        onChanged: (val) => setState(() => _twoFactorEnabled = val),
-                      ),
-                    ),
-                    Divider(height: 1, color: borderColor),
-
-                    // Switch Biometría
-                    ListTile(
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: AppColors.forestGreen.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(Icons.fingerprint, color: accentColor, size: 18),
-                      ),
-                      title: Text('Biometría FaceID / Huella Digital', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-                      subtitle: Text('Autenticación biométrica para firma de operaciones', style: TextStyle(fontSize: 11, color: subtextColor)),
-                      trailing: Switch(
-                        value: _biometricsEnabled,
-                        activeColor: AppColors.forestGreen,
-                        onChanged: (val) => setState(() => _biometricsEnabled = val),
-                      ),
-                    ),
-                    Divider(height: 1, color: borderColor),
-
-                    // Sincronización Offline
-                    ListTile(
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: AppColors.forestGreen.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(Icons.storage_outlined, color: accentColor, size: 18),
-                      ),
-                      title: Text('Sincronización Local / Almacenamiento Offline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-                      subtitle: Text('Gestor de base de datos cifrada SQLite en terminal', style: TextStyle(fontSize: 11, color: subtextColor)),
-                      trailing: Icon(Icons.chevron_right, size: 18, color: subtextColor),
-                      onTap: () {},
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // 4. Cumplimiento y Supervisión Financiera
-              Text(
-                'CUMPLIMIENTO Y SUPERVISIÓN FINANCIERA',
-                style: GoogleFonts.manrope(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
-                  color: subtextColor,
-                ),
-              ),
-              const SizedBox(height: 8),
-
               Container(
                 decoration: BoxDecoration(
                   color: cardBg,
@@ -367,42 +202,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     ListTile(
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(Icons.description_outlined, color: subtextColor, size: 18),
-                      ),
-                      title: Text('Contrato de Servicios Financieros y Custodia', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-                      subtitle: Text('Regulado por Autoridad de Supervisión del Sistema Financiero', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      leading: _buildIconContainer(icon: Icons.lock_outline, accentColor: accentColor),
+                      title: Text('Cambiar PIN / Contraseña', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+                      subtitle: Text('Actualiza tu clave de acceso a la banca', style: TextStyle(fontSize: 11, color: subtextColor)),
                       trailing: Icon(Icons.chevron_right, size: 18, color: subtextColor),
                       onTap: () {},
                     ),
                     Divider(height: 1, color: borderColor),
+                    SwitchListTile(
+                      secondary: _buildIconContainer(icon: Icons.fingerprint, accentColor: accentColor),
+                      title: Text('Ingreso Biométrico', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+                      subtitle: Text('Usa Huella o FaceID para iniciar sesión', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      value: _biometricsEnabled,
+                      activeColor: AppColors.forestGreen,
+                      onChanged: (val) => setState(() => _biometricsEnabled = val),
+                    ),
+                    Divider(height: 1, color: borderColor),
+                    SwitchListTile(
+                      secondary: _buildIconContainer(icon: Icons.shield_outlined, accentColor: accentColor),
+                      title: Text('Autenticación en Dos Pasos (2FA)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+                      subtitle: Text('Confirmación de operaciones vía SMS/OTP', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      value: _twoFactorEnabled,
+                      activeColor: AppColors.forestGreen,
+                      onChanged: (val) => setState(() => _twoFactorEnabled = val),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 4. Sección: Ajustes Generales del Socio
+              _buildSectionHeader('MI INFORMACIÓN Y ALERTAS', subtextColor),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Column(
+                  children: [
                     ListTile(
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(Icons.business_outlined, color: subtextColor, size: 18),
-                      ),
-                      title: Text('Entidad Financiera Emisora', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-                      subtitle: Text('Forest Financial Trust & Banking Services', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      leading: _buildIconContainer(icon: Icons.badge_outlined, accentColor: accentColor),
+                      title: Text('Datos Personales', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+                      subtitle: Text('Dirección, teléfono y correo electrónico', style: TextStyle(fontSize: 11, color: subtextColor)),
                       trailing: Icon(Icons.chevron_right, size: 18, color: subtextColor),
                       onTap: () {},
+                    ),
+                    Divider(height: 1, color: borderColor),
+                    SwitchListTile(
+                      secondary: _buildIconContainer(icon: Icons.notifications_none_outlined, accentColor: accentColor),
+                      title: Text('Notificaciones de Movimientos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
+                      subtitle: Text('Alertas sobre transferencias y pagos', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      value: _notificationsEnabled,
+                      activeColor: AppColors.forestGreen,
+                      onChanged: (val) => setState(() => _notificationsEnabled = val),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
 
-              // Botón Cerrar Sesión Segura
+              // Botón Cerrar Sesión
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -412,7 +273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                   icon: const Icon(Icons.logout, color: Colors.redAccent, size: 18),
                   label: const Text(
-                    'CERRAR SESIÓN SEGURA',
+                    'CERRAR SESIÓN',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.redAccent, letterSpacing: 0.8),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -426,6 +287,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // --- Métodos Auxiliares de UI ---
+
+  Widget _buildSectionHeader(String title, Color subtextColor) {
+    return Text(
+      title,
+      style: GoogleFonts.manrope(
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.0,
+        color: subtextColor,
+      ),
+    );
+  }
+
+  Widget _buildIconContainer({required IconData icon, required Color accentColor}) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: AppColors.forestGreen.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, color: accentColor, size: 18),
+    );
+  }
+
+  Widget _buildThemeSegmentedPicker(ThemeProvider themeProvider, bool isDark, Color subtextColor) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF272B29) : const Color(0xFFE8EDE9),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => themeProvider.setDarkMode(false),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: !isDark ? Colors.white : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: !isDark ? [const BoxShadow(color: Colors.black12, blurRadius: 4)] : null,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.wb_sunny, size: 13, color: !isDark ? AppColors.forestGreen : subtextColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Claro',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: !isDark ? AppColors.forestGreen : subtextColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => themeProvider.setDarkMode(true),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.forestGreen : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: isDark ? [const BoxShadow(color: Colors.black26, blurRadius: 4)] : null,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.nightlight_round, size: 13, color: isDark ? Colors.white : subtextColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Oscuro',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : subtextColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

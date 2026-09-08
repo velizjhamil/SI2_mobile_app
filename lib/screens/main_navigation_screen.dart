@@ -19,7 +19,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     DashboardScreen(),
     ServicesScreen(),
     PortfolioScreen(),
-    ProfileScreen(),
+    SocioProfileScreen(),
   ];
 
   @override
