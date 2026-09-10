@@ -2,7 +2,7 @@
     <!-- Biometric authentication (local_auth) -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <application
-        android:label="si2_mobile_app"
+        android:label="NexaCoop"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -15,21 +15,16 @@ class AuthResult {
 
 /// Real Auth Service connected to FastAPI backend in Docker.
 class AuthService {
-  // 10.0.2.2 es el IP para conectar el Emulador de Android con localhost/Docker de tu PC.
-  // Si usas celular físico por USB/WiFi, usa la IP de tu PC (ej: http://192.168.0.15:8000/api/v1).
   static const String baseUrl = 'http://10.0.2.2:8000/api/v1';
 
-  // Variable estática para almacenar el JWT Token en memoria durante la sesión
   static String? tokenJWT;
 
   final LocalAuthentication _localAuth = LocalAuthentication();
 
-  /// Login real contra la API de FastAPI (OAuth2 / Form-Data o JSON)
   Future<AuthResult> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/auth/login');
 
     try {
-      // FastAPI suele usar form-data por defecto para OAuth2 (username/password)
       final response = await http.post(
         url,
         headers: {

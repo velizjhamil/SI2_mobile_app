@@ -34,7 +34,7 @@ class ForestMicrofinanceApp extends StatelessWidget {
     );
 
     return MaterialApp(
-      title: 'Forest Bank & Microfinanzas',
+      title: 'NexaCoop',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
