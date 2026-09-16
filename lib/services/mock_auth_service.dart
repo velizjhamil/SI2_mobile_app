@@ -21,20 +21,25 @@ class AuthService {
 
   final LocalAuthentication _localAuth = LocalAuthentication();
 
-  Future<AuthResult> login(String email, String password) async {
+  Future<AuthResult> login(String email, String password,
+      {http.Client? client}) async {
     final url = Uri.parse('$baseUrl/auth/login');
+    final httpClient = client ?? http.Client();
+    final shouldClose = client == null;
 
     try {
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: {
-          'username': email.trim(),
-          'password': password,
-        },
-      ).timeout(const Duration(seconds: 5));
+      final response = await httpClient
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'correo': email.trim(),
+              'contrasena': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -51,9 +56,11 @@ class AuthService {
         );
       }
     } catch (e) {
-      return AuthResult.failure(
+      return const AuthResult.failure(
         'No se pudo conectar con el servidor. Verifique si Docker está activo.',
       );
+    } finally {
+      if (shouldClose) httpClient.close();
     }
   }
 

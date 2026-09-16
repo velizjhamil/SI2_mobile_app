@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
+import 'transferencia_screen.dart';
 
 class ServicesScreen extends StatelessWidget {
   const ServicesScreen({super.key});
@@ -50,7 +51,14 @@ class ServicesScreen extends StatelessWidget {
           _buildCategoryHeader(context, 'BANCA DIGITAL & CUENTAS', 'Operaciones transaccionales cotidianas'),
           const SizedBox(height: 8),
           _buildServiceTile(context, Icons.account_balance_wallet, 'Consulta de Saldos y Extractos', 'Detalle de cuentas y exportación PDF', 'Operativo'),
-          _buildServiceTile(context, Icons.swap_horiz, 'Transferencias entre Cuentas', 'Envíos propios, terceros y QR', 'Instantáneo'),
+          _buildServiceTile(context, Icons.swap_horiz, 'Transferencias entre Cuentas', 'Entre tus propias cuentas', 'Instantáneo',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const TransferenciaScreen(),
+                ),
+              );
+            }),
           _buildServiceTile(context, Icons.credit_card, 'Pago Móvil de Cuotas', 'Amortización y recibos digitales', 'Débito Auto'),
           const SizedBox(height: 18),
 
@@ -103,7 +111,7 @@ class ServicesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildServiceTile(BuildContext context, IconData icon, String title, String subtitle, String badge) {
+  Widget _buildServiceTile(BuildContext context, IconData icon, String title, String subtitle, String badge, {VoidCallback? onTap}) {
     final isDark = Provider.of<ThemeProvider>(context).isDark;
     final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
@@ -157,7 +165,7 @@ class ServicesScreen extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         trailing: Icon(Icons.chevron_right, size: 16, color: subtextColor),
-        onTap: () {},
+        onTap: onTap ?? () {},
       ),
     );
   }

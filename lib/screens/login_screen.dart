@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/theme_provider.dart';
-import '../services/auth_service.dart';
+import '../services/mock_auth_service.dart';
 import 'main_navigation_screen.dart';
 
 // Paleta Minimalista CoopIA (Extraída exactamente de tu imagen)
