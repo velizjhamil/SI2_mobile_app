@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 import 'transferencia_screen.dart';
+import 'socio_screens.dart';
 
 class ServicesScreen extends StatelessWidget {
   const ServicesScreen({super.key});
@@ -11,7 +12,8 @@ class ServicesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Provider.of<ThemeProvider>(context).isDark;
-    final bgColor = isDark ? AppColors.darkBackground : AppColors.lightBackground;
+    final bgColor =
+        isDark ? AppColors.darkBackground : AppColors.lightBackground;
     final accentColor = isDark ? AppColors.primary : AppColors.forestGreen;
 
     return Scaffold(
@@ -38,7 +40,10 @@ class ServicesScreen extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   'Online',
-                  style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.bold, color: accentColor),
+                  style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: accentColor),
                 ),
               ],
             ),
@@ -48,49 +53,95 @@ class ServicesScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          _buildCategoryHeader(context, 'BANCA DIGITAL & CUENTAS', 'Operaciones transaccionales cotidianas'),
+          _buildCategoryHeader(context, 'BANCA DIGITAL & CUENTAS',
+              'Operaciones transaccionales cotidianas'),
           const SizedBox(height: 8),
-          _buildServiceTile(context, Icons.account_balance_wallet, 'Consulta de Saldos y Extractos', 'Detalle de cuentas y exportación PDF', 'Operativo'),
-          _buildServiceTile(context, Icons.swap_horiz, 'Transferencias entre Cuentas', 'Entre tus propias cuentas', 'Instantáneo',
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const TransferenciaScreen(),
-                ),
-              );
-            }),
-          _buildServiceTile(context, Icons.credit_card, 'Pago Móvil de Cuotas', 'Amortización y recibos digitales', 'Débito Auto'),
+          _buildServiceTile(
+              context,
+              Icons.account_balance_wallet,
+              'Consulta de Saldos y Extractos',
+              'Detalle de cuentas y exportación PDF',
+              'Operativo',
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const CuentaExtractosScreen()))),
+          _buildServiceTile(
+              context,
+              Icons.swap_horiz,
+              'Transferencias entre Cuentas',
+              'Entre tus propias cuentas',
+              'Instantáneo', onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const TransferenciaScreen(),
+              ),
+            );
+          }),
+          _buildServiceTile(context, Icons.credit_card, 'Pago Móvil de Cuotas',
+              'Amortización y recibos digitales', 'Débito Auto',
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CreditosScreen()))),
           const SizedBox(height: 18),
-
-          _buildCategoryHeader(context, 'CRÉDITOS & INVERSIONES DPF', 'Simuladores y financiamiento digital'),
+          _buildCategoryHeader(context, 'CRÉDITOS & INVERSIONES DPF',
+              'Simuladores y financiamiento digital'),
           const SizedBox(height: 8),
-          _buildServiceTile(context, Icons.calendar_month, 'Cronograma de Pagos y DPF', 'Amortización francesa y DPF 6.75%', '6.75% TEA'),
-          _buildServiceTile(context, Icons.description, 'Solicitud Digital de Crédito', 'Preaprobación 100% digital', 'Preaprobado'),
+          _buildServiceTile(
+              context,
+              Icons.calendar_month,
+              'Cronograma de Pagos y DPF',
+              'Amortización francesa y DPF 6.75%',
+              '6.75% TEA',
+              onTap: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const DpfScreen()))),
+          _buildServiceTile(context, Icons.description, 'Ofertas de re-crédito',
+              'Acepta o descarta tus ofertas vigentes', 'Digital',
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const RecreditosScreen()))),
           const SizedBox(height: 18),
-
-          _buildCategoryHeader(context, 'OPERACIONES EN TERRENO', 'Herramientas del Oficial de Campo'),
+          _buildCategoryHeader(context, 'OPERACIONES EN TERRENO',
+              'Herramientas del Oficial de Campo'),
           const SizedBox(height: 8),
-          _buildServiceTile(context, Icons.assignment, 'Levantamiento Socioeconómico', 'Flujo de caja, ventas y costos', 'Flujo Caja'),
-          _buildServiceTile(context, Icons.camera_alt, 'Captura de Fotos y GPS', 'Marca de agua y satelital', 'GPS ±3.5m'),
-          _buildServiceTile(context, Icons.bolt, 'Precalificación y Scoring', 'Motor de riesgo en tiempo real', 'Score 300-850'),
-          _buildServiceTile(context, Icons.cloud_sync, 'Sincronización Offline', 'Almacenamiento SQLite local', 'Sincronizado'),
+          _buildServiceTile(
+              context,
+              Icons.assignment,
+              'Levantamiento Socioeconómico',
+              'Flujo de caja, ventas y costos',
+              'Flujo Caja'),
+          _buildServiceTile(context, Icons.camera_alt, 'Captura de Fotos y GPS',
+              'Marca de agua y satelital', 'GPS ±3.5m'),
+          _buildServiceTile(context, Icons.bolt, 'Precalificación y Scoring',
+              'Motor de riesgo en tiempo real', 'Score 300-850'),
+          _buildServiceTile(context, Icons.cloud_sync, 'Sincronización Offline',
+              'Almacenamiento SQLite local', 'Sincronizado'),
           const SizedBox(height: 18),
-
-          _buildCategoryHeader(context, 'SEGURIDAD & NOTIFICACIONES', 'Biometría FIDO2 y control de sesión'),
+          _buildCategoryHeader(context, 'SEGURIDAD & NOTIFICACIONES',
+              'Biometría FIDO2 y control de sesión'),
           const SizedBox(height: 8),
-          _buildServiceTile(context, Icons.fingerprint, 'Autenticación Biométrica', 'FaceID, TouchID y PIN seguro', 'FIDO2'),
-          _buildServiceTile(context, Icons.notifications_active, 'Notificaciones Push', 'Alertas de cuotas y vencimientos', 'Alertas'),
-          _buildServiceTile(context, Icons.logout, 'Cierre Seguro de Sesión', 'Revocación de tokens y limpieza', 'Seguridad'),
+          _buildServiceTile(
+              context,
+              Icons.fingerprint,
+              'Autenticación Biométrica',
+              'FaceID, TouchID y PIN seguro',
+              'FIDO2'),
+          _buildServiceTile(
+              context,
+              Icons.notifications_active,
+              'Notificaciones Push',
+              'Alertas de cuotas y vencimientos',
+              'Alertas'),
+          _buildServiceTile(context, Icons.logout, 'Cierre Seguro de Sesión',
+              'Revocación de tokens y limpieza', 'Seguridad'),
           const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryHeader(BuildContext context, String title, String subtitle) {
+  Widget _buildCategoryHeader(
+      BuildContext context, String title, String subtitle) {
     final isDark = Provider.of<ThemeProvider>(context).isDark;
     final accentColor = isDark ? AppColors.primary : AppColors.forestGreen;
-    final subtextColor = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final subtextColor =
+        isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,12 +162,15 @@ class ServicesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildServiceTile(BuildContext context, IconData icon, String title, String subtitle, String badge, {VoidCallback? onTap}) {
+  Widget _buildServiceTile(BuildContext context, IconData icon, String title,
+      String subtitle, String badge,
+      {VoidCallback? onTap}) {
     final isDark = Provider.of<ThemeProvider>(context).isDark;
     final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final textColor = isDark ? AppColors.darkText : AppColors.lightText;
-    final subtextColor = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final subtextColor =
+        isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final accentColor = isDark ? AppColors.primary : AppColors.forestGreen;
 
     return Container(
@@ -142,19 +196,27 @@ class ServicesScreen extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: textColor),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: textColor),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                color: isDark
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.black.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 badge,
-                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: accentColor),
+                style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: accentColor),
               ),
             ),
           ],
