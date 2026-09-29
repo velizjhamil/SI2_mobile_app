@@ -7,11 +7,39 @@ import 'package:forest_microfinance/screens/main_navigation_screen.dart';
 import 'package:forest_microfinance/services/mock_auth_service.dart';
 import 'package:forest_microfinance/services/secure_token_store.dart';
 
+import 'package:http/http.dart' as http;
+import 'package:forest_microfinance/screens/campo_screens.dart';
+
 Widget _wrap(Widget child) {
   return ChangeNotifierProvider(
     create: (_) => ThemeProvider(),
     child: MaterialApp(home: child),
   );
+}
+
+class FakeRoleAuthService extends AuthService {
+  final String role;
+  FakeRoleAuthService(this.role, {super.tokenStore, super.biometric});
+
+  @override
+  Future<AuthResult> login(String email, String password,
+      {http.Client? client}) async {
+    AuthService.tokenJWT = 'jwt-fake-$role';
+    AuthService.currentRole = role;
+    return AuthResult.success(token: 'jwt-fake-$role', role: role);
+  }
+
+  @override
+  Future<bool> isBiometricAvailable() async => false;
+}
+
+void _ignorarAvisoListTileConFondo() {
+  final originalOnError = FlutterError.onError;
+  addTearDown(() => FlutterError.onError = originalOnError);
+  FlutterError.onError = (FlutterErrorDetails details) {
+    if (details.toString().contains('ink splashes may be invisible')) return;
+    originalOnError?.call(details);
+  };
 }
 
 void main() {
@@ -48,5 +76,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Ingresar con Biometría'), findsNothing);
+  });
+
+  testWidgets(
+      'login con OFICIAL_CREDITO navega a CampoHomeScreen (/campo)',
+      (WidgetTester tester) async {
+    final service = FakeRoleAuthService(
+      'OFICIAL_CREDITO',
+      tokenStore: InMemorySecureTokenStore(),
+      biometric: FakeBiometricAuthenticator(false),
+    );
+    await tester.pumpWidget(_wrap(LoginScreen(authService: service)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Iniciar Sesión'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CampoHomeScreen), findsOneWidget);
+    expect(find.byType(MainNavigationScreen), findsNothing);
+  });
+
+  testWidgets(
+      'login con SOCIO navega a MainNavigationScreen (/dashboard)',
+      (WidgetTester tester) async {
+    _ignorarAvisoListTileConFondo();
+    final service = FakeRoleAuthService(
+      'SOCIO',
+      tokenStore: InMemorySecureTokenStore(),
+      biometric: FakeBiometricAuthenticator(false),
+    );
+    await tester.pumpWidget(_wrap(LoginScreen(authService: service)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Iniciar Sesión'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MainNavigationScreen), findsOneWidget);
+    expect(find.byType(CampoHomeScreen), findsNothing);
   });
 }

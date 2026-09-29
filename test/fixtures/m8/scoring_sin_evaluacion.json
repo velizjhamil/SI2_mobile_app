@@ -1,0 +1,6 @@
+{
+ "status": 422,
+ "body": {
+  "detail": "Falta la evaluación de campo del oficial"
+ }
+}

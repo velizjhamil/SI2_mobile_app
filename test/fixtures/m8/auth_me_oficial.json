@@ -1,0 +1,23 @@
+{
+ "status": 200,
+ "body": {
+  "id": 23,
+  "nombre": "Orlando Campo",
+  "correo": "oficial.credito@test.com",
+  "estado": "ACTIVO",
+  "fecha_creacion": "2026-09-25T00:41:57.279333Z",
+  "rol": {
+   "id": 4,
+   "nombre": "OFICIAL_CREDITO",
+   "descripcion": "Oficial de Crédito / Campo: evaluación y seguimiento de créditos en campo",
+   "permisos": [
+    {
+     "id": 4,
+     "nombre": "CREDITO_EVALUACION",
+     "descripcion": "Registrar datos de campo, analizar scoring e ingresar solicitudes"
+    }
+   ]
+  },
+  "cooperativa_id": 1
+ }
+}

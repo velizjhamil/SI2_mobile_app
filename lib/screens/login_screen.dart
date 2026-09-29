@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/theme_provider.dart';
 import '../services/mock_auth_service.dart';
+import 'campo_screens.dart';
 import 'main_navigation_screen.dart';
 
 // Paleta Minimalista CoopIA (Extraída exactamente de tu imagen)
@@ -73,10 +74,23 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _goToMain() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-    );
+  void _goToMain({String? role}) {
+    final effectiveRole = role ?? AuthService.currentRole;
+    if (effectiveRole == 'OFICIAL_CREDITO') {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          settings: const RouteSettings(name: '/campo'),
+          builder: (_) => const CampoHomeScreen(),
+        ),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          settings: const RouteSettings(name: '/dashboard'),
+          builder: (_) => const MainNavigationScreen(),
+        ),
+      );
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -124,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
       }
-      _goToMain();
+      _goToMain(role: result.role);
     } else {
       _showError(result.error ?? 'Error de autenticación.');
     }
@@ -146,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isBioLoading = false);
 
     if (result.success) {
-      _goToMain();
+      _goToMain(role: result.role);
     } else {
       _showError(result.error ?? 'Autenticación fallida.');
     }

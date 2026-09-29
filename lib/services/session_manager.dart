@@ -14,6 +14,7 @@ class SessionManager {
   static Future<void> onUnauthorized() async {
     try {
       AuthService.tokenJWT = null;
+      AuthService.currentRole = null;
       await AuthService.currentStore.clearToken();
       appNavigatorKey.currentState?.pushNamedAndRemoveUntil(
         '/login',

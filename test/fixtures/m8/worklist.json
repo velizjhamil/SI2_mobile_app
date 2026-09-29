@@ -1,0 +1,135 @@
+{
+ "status": 200,
+ "body": [
+  {
+   "id": 9008,
+   "numero_solicitud": "SOL-000005",
+   "fecha_solicitud": "2026-09-29T22:48:08.632979Z",
+   "fecha_actualizacion": "2026-09-29T22:48:08.720931Z",
+   "estado": "APROBADO",
+   "socio": {
+    "id": 3,
+    "nombre_completo": "Sofia Socia",
+    "ci": "5551234",
+    "estado": "ACTIVO"
+   },
+   "producto": {
+    "id": 2,
+    "codigo": "CONS-BOB",
+    "nombre": "Crédito de Consumo",
+    "tipo_amortizacion": "FRANCES",
+    "relacion_cuota_ingreso_max": "40.00"
+   },
+   "moneda": {
+    "id": 1,
+    "codigo_iso": "BOB",
+    "nombre": "Boliviano",
+    "simbolo": "Bs."
+   },
+   "monto": "3000.00",
+   "plazo_meses": 12,
+   "tasa_interes": "18.00",
+   "destino": "CONSUMO",
+   "destino_detalle": "Equipamiento del hogar",
+   "observaciones": null,
+   "motivo_anulacion": null,
+   "tiene_deudas": false,
+   "cuota_estimada": "275.04",
+   "relacion_cuota_ingreso": "5.50",
+   "supera_relacion_maxima": false,
+   "evaluacion": {
+    "id": 6211,
+    "ingreso_mensual": "5000.00",
+    "egreso_mensual": "2000.00",
+    "cuota_deudas_mensual": "0.00",
+    "capacidad_pago": "3000.00",
+    "actividad_economica": "Venta de abarrotes en mercado",
+    "fuente_ingresos": "INDEPENDIENTE",
+    "antiguedad_laboral_meses": 48,
+    "calificacion_asfi": "A",
+    "coordenadas": null,
+    "observaciones": "Negocio verificado en visita",
+    "fecha": "2026-09-29"
+   },
+   "oficial": {
+    "id": 12,
+    "nombre": "Sofia Socia"
+   },
+   "ultima_evaluacion": {
+    "id": 1507,
+    "score": 910,
+    "dictamen": "APROBADO",
+    "fecha": "2026-09-29T22:48:08.720931Z"
+   },
+   "ronda_comite": 0,
+   "resultado_comite": null,
+   "cobertura": {
+    "requiere_garantia": false,
+    "cobertura_minima": "0.00",
+    "monto_solicitado": "3000.00",
+    "valor_realizable_verificado": "0.00",
+    "valor_realizable_pendiente": "0.00",
+    "porcentaje_cobertura": "0.00",
+    "cumple": true
+   },
+   "canal_origen": "MOVIL",
+   "requiere_evaluacion": false
+  },
+  {
+   "id": 8852,
+   "numero_solicitud": "SOL-000004",
+   "fecha_solicitud": "2026-09-29T20:29:04.876983Z",
+   "fecha_actualizacion": "2026-09-29T20:29:05.382769Z",
+   "estado": "ANULADA",
+   "socio": {
+    "id": 3,
+    "nombre_completo": "Sofia Socia",
+    "ci": "5551234",
+    "estado": "ACTIVO"
+   },
+   "producto": {
+    "id": 2,
+    "codigo": "CONS-BOB",
+    "nombre": "Crédito de Consumo",
+    "tipo_amortizacion": "FRANCES",
+    "relacion_cuota_ingreso_max": "40.00"
+   },
+   "moneda": {
+    "id": 1,
+    "codigo_iso": "BOB",
+    "nombre": "Boliviano",
+    "simbolo": "Bs."
+   },
+   "monto": "1500.00",
+   "plazo_meses": 6,
+   "tasa_interes": "18.00",
+   "destino": "CONSUMO",
+   "destino_detalle": "Compra de electrodomésticos",
+   "observaciones": null,
+   "motivo_anulacion": "Ya no necesito el crédito",
+   "tiene_deudas": false,
+   "cuota_estimada": "263.29",
+   "relacion_cuota_ingreso": null,
+   "supera_relacion_maxima": null,
+   "evaluacion": null,
+   "oficial": {
+    "id": 12,
+    "nombre": "Sofia Socia"
+   },
+   "ultima_evaluacion": null,
+   "ronda_comite": 0,
+   "resultado_comite": null,
+   "cobertura": {
+    "requiere_garantia": false,
+    "cobertura_minima": "0.00",
+    "monto_solicitado": "1500.00",
+    "valor_realizable_verificado": "0.00",
+    "valor_realizable_pendiente": "0.00",
+    "porcentaje_cobertura": "0.00",
+    "cumple": true
+   },
+   "canal_origen": "MOVIL",
+   "requiere_evaluacion": false
+  }
+ ]
+}

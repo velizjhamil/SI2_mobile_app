@@ -1,0 +1,59 @@
+{
+ "status": 200,
+ "body": {
+  "solicitud": {
+   "id": 9008,
+   "numero_solicitud": "SOL-000005",
+   "producto": "Crédito de Consumo",
+   "monto": 3000.0,
+   "plazo_meses": 12,
+   "destino": "CONSUMO",
+   "destino_detalle": "Equipamiento del hogar",
+   "estado": "APROBADO",
+   "canal_origen": "MOVIL",
+   "requiere_evaluacion": false
+  },
+  "socio": {
+   "id": 3,
+   "nombre_completo": "Sofia Socia",
+   "ci": "5551234",
+   "telefono": null,
+   "direccion": null
+  },
+  "datos_declarados": {
+   "egreso_mensual": "2100.00",
+   "fuente_ingresos": "INDEPENDIENTE",
+   "ingreso_mensual": "5200.00",
+   "actividad_economica": "Venta de abarrotes"
+  },
+  "evaluacion": {
+   "id": 6211,
+   "ingreso_mensual": "5000.00",
+   "egreso_mensual": "2000.00",
+   "cuota_deudas_mensual": "0.00",
+   "capacidad_pago": "3000.00",
+   "actividad_economica": "Venta de abarrotes en mercado",
+   "fuente_ingresos": "INDEPENDIENTE",
+   "antiguedad_laboral_meses": 48,
+   "calificacion_asfi": "A",
+   "coordenadas": null,
+   "observaciones": "Negocio verificado en visita",
+   "fecha": "2026-09-29"
+  },
+  "catalogos": {
+   "fuentes_ingresos": [
+    "DEPENDIENTE",
+    "INDEPENDIENTE",
+    "MIXTO"
+   ],
+   "calificaciones_asfi": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F"
+   ]
+  }
+ }
+}

@@ -94,7 +94,8 @@ class AuthService {
   );
 
   static String? tokenJWT;
-  static final SecureTokenStore defaultStore = FlutterSecureTokenStore();
+  static String? currentRole;
+  static const SecureTokenStore defaultStore = FlutterSecureTokenStore();
   static SecureTokenStore currentStore = defaultStore;
 
   final SecureTokenStore tokenStore;
@@ -112,6 +113,7 @@ class AuthService {
     http.Client? client,
   }) async {
     tokenJWT = null;
+    currentRole = null;
     final httpClient = client ?? http.Client();
     final close = client == null;
     try {
@@ -150,6 +152,7 @@ class AuthService {
         );
       }
       tokenJWT = token;
+      currentRole = role;
       if (await tokenStore.biometricsEnabled()) {
         await tokenStore.saveToken(
           token,
@@ -217,6 +220,7 @@ class AuthService {
       );
     }
     tokenJWT = storedToken;
+    currentRole = role;
     return AuthResult.success(token: storedToken, role: role);
   }
 
@@ -305,6 +309,7 @@ class AuthService {
     } finally {
       if (close) httpClient.close();
       tokenJWT = null;
+      currentRole = null;
       try {
         await tokenStore.clearToken();
         return true;
