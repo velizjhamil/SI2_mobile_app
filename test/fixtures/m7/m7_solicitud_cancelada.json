@@ -1,0 +1,16 @@
+{
+ "status": 200,
+ "body": {
+  "id": 8852,
+  "numero_solicitud": "SOL-000004",
+  "producto": "Crédito de Consumo",
+  "monto": "1500.00",
+  "plazo_meses": 6,
+  "destino": "CONSUMO",
+  "estado": "ANULADA",
+  "canal_origen": "MOVIL",
+  "fecha_solicitud": "2026-09-29T20:29:04.876983+00:00",
+  "requiere_evaluacion": true,
+  "motivo": "Ya no necesito el crédito"
+ }
+}

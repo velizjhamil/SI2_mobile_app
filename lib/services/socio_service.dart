@@ -104,6 +104,85 @@ class SocioService {
   }) =>
       _request('POST', '/socio/recreditos/$offerId/descartar', client: client);
 
+  Future<SocioResult<List<ProductoCreditoSocio>>> creditProducts({
+    http.Client? client,
+  }) =>
+      _getList('/socio/productos-credito', ProductoCreditoSocio.fromJson, client);
+
+  Future<SocioResult<SimulacionCredito>> simulateCredit({
+    required int productId,
+    required String amount,
+    required int termMonths,
+    http.Client? client,
+  }) =>
+      _get(
+        '/socio/creditos/simulacion',
+        {
+          'producto_id': '$productId',
+          'monto': amount,
+          'plazo_meses': '$termMonths',
+        },
+        SimulacionCredito.fromJson,
+        client,
+      );
+
+  Future<SocioResult<SolicitudCreditoItem>> createCreditRequest({
+    required int productId,
+    required String amount,
+    required int termMonths,
+    required String destination,
+    String? destinationDetail,
+    required DatosDeclarados declaredData,
+    http.Client? client,
+  }) async {
+    final body = {
+      'producto_id': productId,
+      'monto': amount,
+      'plazo_meses': termMonths,
+      'destino': destination,
+      if (destinationDetail != null && destinationDetail.trim().isNotEmpty)
+        'destino_detalle': destinationDetail.trim(),
+      'datos_declarados': declaredData.toJson(),
+    };
+    final result = await _request(
+      'POST',
+      '/socio/solicitudes',
+      body: body,
+      client: client,
+    );
+    return result.success
+        ? SocioResult.success(SolicitudCreditoItem.fromJson(result.value!))
+        : SocioResult.failure(result.error);
+  }
+
+  Future<SocioResult<List<SolicitudCreditoItem>>> creditRequests({
+    http.Client? client,
+  }) =>
+      _getList('/socio/solicitudes', SolicitudCreditoItem.fromJson, client);
+
+  Future<SocioResult<SolicitudCreditoDetalle>> creditRequestDetail(
+    int requestId, {
+    http.Client? client,
+  }) =>
+      _get('/socio/solicitudes/$requestId', null,
+          SolicitudCreditoDetalle.fromJson, client);
+
+  Future<SocioResult<SolicitudCreditoItem>> cancelCreditRequest(
+    int requestId, {
+    required String reason,
+    http.Client? client,
+  }) async {
+    final result = await _request(
+      'POST',
+      '/socio/solicitudes/$requestId/cancelar',
+      body: {'motivo': reason},
+      client: client,
+    );
+    return result.success
+        ? SocioResult.success(SolicitudCreditoItem.fromJson(result.value!))
+        : SocioResult.failure(result.error);
+  }
+
   Future<SocioResult<T>> _get<T>(
     String path,
     Map<String, String>? query,
@@ -189,9 +268,20 @@ class SocioService {
             'Sesión no válida o expirada. Inicie sesión nuevamente.');
       }
       final detail = decoded is Map ? decoded['detail'] : null;
-      return SocioResult.failure(detail is String && detail.isNotEmpty
-          ? detail
-          : 'Error del servidor (${response.statusCode}). Intente más tarde.');
+      if (detail is String && detail.isNotEmpty) {
+        return SocioResult.failure(detail);
+      }
+      if (detail is List && detail.isNotEmpty) {
+        final messages = detail.map((item) {
+          if (item is Map && item.containsKey('msg')) {
+            return item['msg'].toString().replaceFirst('Value error, ', '');
+          }
+          return item.toString();
+        }).join('; ');
+        return SocioResult.failure(messages);
+      }
+      return SocioResult.failure(
+          'Error del servidor (${response.statusCode}). Intente más tarde.');
     } on TimeoutException {
       return const SocioResult.failure(
           'Tiempo de espera agotado. Intente nuevamente.');

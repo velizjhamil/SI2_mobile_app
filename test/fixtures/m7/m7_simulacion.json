@@ -1,0 +1,52 @@
+{
+ "status": 200,
+ "body": {
+  "cuota_estimada": "263.29",
+  "total_intereses": "79.72",
+  "total_a_pagar": "1579.72",
+  "cronograma": [
+   {
+    "numero": 1,
+    "capital": "240.79",
+    "interes": "22.50",
+    "cuota": "263.29",
+    "saldo": "1259.21"
+   },
+   {
+    "numero": 2,
+    "capital": "244.40",
+    "interes": "18.89",
+    "cuota": "263.29",
+    "saldo": "1014.81"
+   },
+   {
+    "numero": 3,
+    "capital": "248.07",
+    "interes": "15.22",
+    "cuota": "263.29",
+    "saldo": "766.74"
+   },
+   {
+    "numero": 4,
+    "capital": "251.79",
+    "interes": "11.50",
+    "cuota": "263.29",
+    "saldo": "514.95"
+   },
+   {
+    "numero": 5,
+    "capital": "255.57",
+    "interes": "7.72",
+    "cuota": "263.29",
+    "saldo": "259.38"
+   },
+   {
+    "numero": 6,
+    "capital": "259.38",
+    "interes": "3.89",
+    "cuota": "263.27",
+    "saldo": "0.00"
+   }
+  ]
+ }
+}

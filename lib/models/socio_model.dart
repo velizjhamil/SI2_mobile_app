@@ -1,3 +1,5 @@
+export 'solicitud_credito_model.dart';
+
 class ExtractoMovimiento {
   final int transactionId;
   final String date;

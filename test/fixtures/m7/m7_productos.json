@@ -1,0 +1,44 @@
+{
+ "status": 200,
+ "body": [
+  {
+   "id": 2,
+   "codigo": "CONS-BOB",
+   "nombre": "Crédito de Consumo",
+   "moneda": "BOB",
+   "monto_min": "1000.00",
+   "monto_max": "50000.00",
+   "plazo_min_meses": 6,
+   "plazo_max_meses": 48,
+   "tasa_interes_anual": "18.00",
+   "tipo_amortizacion": "FRANCES",
+   "requiere_garantia": false
+  },
+  {
+   "id": 3,
+   "codigo": "VIV-USD",
+   "nombre": "Crédito de Vivienda",
+   "moneda": "USD",
+   "monto_min": "10000.00",
+   "monto_max": "150000.00",
+   "plazo_min_meses": 60,
+   "plazo_max_meses": 240,
+   "tasa_interes_anual": "8.50",
+   "tipo_amortizacion": "ALEMAN",
+   "requiere_garantia": true
+  },
+  {
+   "id": 1,
+   "codigo": "MICRO-BOB",
+   "nombre": "Microcrédito Productivo",
+   "moneda": "BOB",
+   "monto_min": "2000.00",
+   "monto_max": "100000.00",
+   "plazo_min_meses": 6,
+   "plazo_max_meses": 60,
+   "tasa_interes_anual": "15.00",
+   "tipo_amortizacion": "FRANCES",
+   "requiere_garantia": true
+  }
+ ]
+}

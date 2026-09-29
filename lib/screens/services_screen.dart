@@ -5,6 +5,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 import 'transferencia_screen.dart';
 import 'socio_screens.dart';
+import 'solicitud_credito_screens.dart';
 
 class ServicesScreen extends StatelessWidget {
   const ServicesScreen({super.key});
@@ -84,6 +85,22 @@ class ServicesScreen extends StatelessWidget {
           _buildCategoryHeader(context, 'CRÉDITOS & INVERSIONES DPF',
               'Simuladores y financiamiento digital'),
           const SizedBox(height: 8),
+          _buildServiceTile(
+              context,
+              Icons.add_card,
+              'Solicitar crédito',
+              'Simula y solicita financiamiento digital',
+              'Nuevo',
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProductosCreditoScreen()))),
+          _buildServiceTile(
+              context,
+              Icons.folder_shared,
+              'Mis solicitudes de crédito',
+              'Seguimiento y estado de solicitudes',
+              'Digital',
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MisSolicitudesScreen()))),
           _buildServiceTile(
               context,
               Icons.calendar_month,
