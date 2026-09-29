@@ -48,7 +48,17 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
         }
         return;
       }
-      await _authService.enableBiometrics();
+      final result = await _authService.enableBiometrics();
+      if (!result.success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.error ?? 'No se pudo activar la biometría.'),
+            ),
+          );
+        }
+        return;
+      }
     } else {
       await _authService.disableBiometrics();
     }
@@ -74,8 +84,16 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
       ),
     );
     if (confirmed != true) return;
-    await _authService.logout();
+    final cleaned = await _authService.logout();
     if (!mounted) return;
+    if (!cleaned) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Sesión cerrada, pero no se pudo limpiar la sesión biométrica.'),
+        ),
+      );
+    }
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
   }
 

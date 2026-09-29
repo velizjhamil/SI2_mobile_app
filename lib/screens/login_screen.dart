@@ -114,9 +114,14 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
         if (enable == true) {
-          await _authService.enableBiometrics(
+          final biometricResult = await _authService.enableBiometrics(
             email: _emailController.text.trim(),
           );
+          if (!biometricResult.success && mounted) {
+            _showError(
+              biometricResult.error ?? 'No se pudo activar la biometría.',
+            );
+          }
         }
       }
       _goToMain();

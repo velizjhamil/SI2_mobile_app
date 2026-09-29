@@ -13,22 +13,33 @@ class AuthResult {
   final String? token;
   final String? role;
   final Map<String, dynamic>? user;
+  final AuthFailureKind failureKind;
 
   const AuthResult.success({this.token, this.role})
       : success = true,
         error = null,
-        user = null;
+        user = null,
+        failureKind = AuthFailureKind.none;
   const AuthResult.failure(this.error)
       : success = false,
         token = null,
         role = null,
-        user = null;
+        user = null,
+        failureKind = AuthFailureKind.none;
   const AuthResult._user(Map<String, dynamic> this.user)
       : success = true,
         error = null,
         token = null,
-        role = null;
+        role = null,
+        failureKind = AuthFailureKind.none;
+  const AuthResult._failure(this.error, this.failureKind)
+      : success = false,
+        token = null,
+        role = null,
+        user = null;
 }
+
+enum AuthFailureKind { none, unauthorized, network }
 
 abstract class BiometricAuthenticator {
   Future<bool> isAvailable();
@@ -93,9 +104,7 @@ class AuthService {
     SecureTokenStore? tokenStore,
     BiometricAuthenticator? biometric,
   })  : tokenStore = tokenStore ?? defaultStore,
-        biometric = biometric ?? LocalBiometricAuthenticator() {
-    currentStore = this.tokenStore;
-  }
+        biometric = biometric ?? LocalBiometricAuthenticator();
 
   Future<AuthResult> login(
     String email,
@@ -190,10 +199,14 @@ class AuthService {
     }
     final me = await _currentUser(storedToken, client: client);
     if (!me.success) {
-      await _disableStoredBiometrics();
+      if (me.failureKind == AuthFailureKind.unauthorized) {
+        await _disableStoredBiometrics();
+      }
       return AuthResult.failure(
-        me.error ??
-            'La sesión biométrica ya no es válida. Ingrese con su contraseña.',
+        me.failureKind == AuthFailureKind.network
+            ? 'Sin conexión; intentá de nuevo'
+            : me.error ??
+                'La sesión biométrica ya no es válida. Ingrese con su contraseña.',
       );
     }
     final role = _role(me.user!);
@@ -225,8 +238,9 @@ class AuthService {
         return AuthResult._user(_map(response.body));
       }
       if (response.statusCode == 401) {
-        return const AuthResult.failure(
+        return const AuthResult._failure(
           'La sesión no es válida. Ingrese con su contraseña.',
+          AuthFailureKind.unauthorized,
         );
       }
       final detail = _map(response.body)['detail'];
@@ -234,30 +248,45 @@ class AuthService {
         detail is String ? detail : 'No se pudo validar la sesión.',
       );
     } catch (_) {
-      return const AuthResult.failure(
-        'No se pudo validar la sesión. Verifique su conexión.',
+      return const AuthResult._failure(
+        'Sin conexión; intentá de nuevo',
+        AuthFailureKind.network,
       );
     } finally {
       if (close) httpClient.close();
     }
   }
 
-  Future<void> enableBiometrics({String? email}) async {
+  Future<AuthResult> enableBiometrics({String? email}) async {
     final token = tokenJWT;
-    if (token == null || token.isEmpty) return;
-    await tokenStore.setBiometricsEnabled(true);
-    await tokenStore.saveToken(
-      token,
-      expiresAt: _expiryFromToken(token),
-      email: email,
-    );
+    if (token == null || token.isEmpty) {
+      return const AuthResult.failure(
+        'Inicie sesión con su contraseña antes de activar la biometría.',
+      );
+    }
+    try {
+      await tokenStore.setBiometricsEnabled(true);
+      await tokenStore.saveToken(
+        token,
+        expiresAt: _expiryFromToken(token),
+        email: email,
+      );
+      return const AuthResult.success();
+    } catch (_) {
+      try {
+        await tokenStore.setBiometricsEnabled(false);
+      } catch (_) {}
+      return const AuthResult.failure(
+        'No se pudo guardar la sesión biométrica.',
+      );
+    }
   }
 
   Future<void> disableBiometrics() => _disableStoredBiometrics();
 
   Future<bool> isBiometricAvailable() => biometric.isAvailable();
 
-  Future<void> logout({http.Client? client}) async {
+  Future<bool> logout({http.Client? client}) async {
     final token = tokenJWT;
     final httpClient = client ?? http.Client();
     final close = client == null;
@@ -276,14 +305,18 @@ class AuthService {
     } finally {
       if (close) httpClient.close();
       tokenJWT = null;
-      await tokenStore.clearToken();
+      try {
+        await tokenStore.clearToken();
+        return true;
+      } catch (_) {
+        return false;
+      }
     }
   }
 
   Future<void> _disableStoredBiometrics() async {
     await tokenStore.clearToken();
     await tokenStore.setBiometricsEnabled(false);
-    tokenJWT = null;
   }
 
   static Map<String, dynamic> _map(String body) {

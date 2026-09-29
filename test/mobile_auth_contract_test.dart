@@ -1,10 +1,30 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:forest_microfinance/services/mock_auth_service.dart';
 import 'package:forest_microfinance/services/secure_token_store.dart';
+import 'package:forest_microfinance/services/session_manager.dart';
+import 'package:forest_microfinance/services/cuentas_service.dart';
+
+class _ThrowingTokenStore extends InMemorySecureTokenStore {
+  bool throwOnSave = false;
+  bool throwOnClear = false;
+
+  @override
+  Future<void> saveToken(String token, {DateTime? expiresAt, String? email}) {
+    if (throwOnSave) throw StateError('secure storage unavailable');
+    return super.saveToken(token, expiresAt: expiresAt, email: email);
+  }
+
+  @override
+  Future<void> clearToken() {
+    if (throwOnClear) throw StateError('secure storage unavailable');
+    return super.clearToken();
+  }
+}
 
 void main() {
   test('password login validates /auth/me and accepts a socio role', () async {
@@ -119,5 +139,92 @@ void main() {
     expect(AuthService.tokenJWT, isNull);
     expect(await store.readToken(), isNull);
     expect(await store.biometricsEnabled(), isTrue);
+  });
+
+  test('disabling biometrics keeps the live session and sends its bearer token',
+      () async {
+    final store = InMemorySecureTokenStore();
+    final service = AuthService(tokenStore: store);
+    AuthService.tokenJWT = 'live-token';
+    await store.saveToken('stored-token');
+    await store.setBiometricsEnabled(true);
+
+    await service.disableBiometrics();
+
+    expect(AuthService.tokenJWT, 'live-token');
+    expect(await store.readToken(), isNull);
+    expect(await store.biometricsEnabled(), isFalse);
+    final client = MockClient((request) async {
+      expect(request.headers['Authorization'], 'Bearer live-token');
+      return http.Response('[]', 200);
+    });
+    AuthService.tokenJWT = 'live-token';
+    await CuentasService().listarMisCuentas(client: client);
+  });
+
+  test('biometric 401 disables storage, but network failure preserves it',
+      () async {
+    final invalidStore = InMemorySecureTokenStore();
+    await invalidStore.saveToken('invalid');
+    await invalidStore.setBiometricsEnabled(true);
+    final invalid = AuthService(
+      tokenStore: invalidStore,
+      biometric: FakeBiometricAuthenticator(true),
+    );
+    final unauthorized = MockClient(
+      (_) async => http.Response('{"detail":"expired"}', 401),
+    );
+    final invalidResult =
+        await invalid.authenticateWithBiometrics(client: unauthorized);
+    expect(invalidResult.success, isFalse);
+    expect(await invalidStore.readToken(), isNull);
+    expect(await invalidStore.biometricsEnabled(), isFalse);
+
+    final networkStore = InMemorySecureTokenStore();
+    await networkStore.saveToken('network-token');
+    await networkStore.setBiometricsEnabled(true);
+    final network = AuthService(
+      tokenStore: networkStore,
+      biometric: FakeBiometricAuthenticator(true),
+    );
+    final networkResult = await network.authenticateWithBiometrics(
+      client: MockClient((_) async => throw TimeoutException('offline')),
+    );
+    expect(networkResult.success, isFalse);
+    expect(networkResult.error, 'Sin conexión; intentá de nuevo');
+    expect(await networkStore.readToken(), 'network-token');
+    expect(await networkStore.biometricsEnabled(), isTrue);
+  });
+
+  test('enabling biometrics fails when there is no live token or storage fails',
+      () async {
+    AuthService.tokenJWT = null;
+    final noToken = AuthService(tokenStore: InMemorySecureTokenStore());
+    expect((await noToken.enableBiometrics()).success, isFalse);
+
+    final throwing = _ThrowingTokenStore()..throwOnSave = true;
+    final service = AuthService(tokenStore: throwing);
+    AuthService.tokenJWT = 'live-token';
+    final result = await service.enableBiometrics();
+    expect(result.success, isFalse);
+  });
+
+  test('constructing an AuthService does not replace SessionManager store',
+      () async {
+    final configured = InMemorySecureTokenStore();
+    SessionManager.configure(configured);
+    AuthService(tokenStore: InMemorySecureTokenStore());
+    expect(identical(AuthService.currentStore, configured), isTrue);
+  });
+
+  test('logout clears memory even when secure storage cleanup fails', () async {
+    final store = _ThrowingTokenStore()..throwOnClear = true;
+    final service = AuthService(tokenStore: store);
+    AuthService.tokenJWT = 'live-token';
+    final cleaned = await service.logout(
+      client: MockClient((_) async => http.Response('{}', 204)),
+    );
+    expect(cleaned, isFalse);
+    expect(AuthService.tokenJWT, isNull);
   });
 }
