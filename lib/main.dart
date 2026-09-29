@@ -5,6 +5,7 @@ import 'core/theme/theme_provider.dart';
 import 'core/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_navigation_screen.dart';
+import 'services/session_manager.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,12 +29,15 @@ class ForestMicrofinanceApp extends StatelessWidget {
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarColor: isDark ? const Color(0xFF101412) : const Color(0xFFF4F6F4),
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor:
+            isDark ? const Color(0xFF101412) : const Color(0xFFF4F6F4),
+        systemNavigationBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
       ),
     );
 
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'NexaCoop',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,

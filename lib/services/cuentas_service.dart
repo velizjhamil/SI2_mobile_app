@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/cuenta_ahorro_model.dart';
 import 'mock_auth_service.dart';
+import 'session_manager.dart';
 
 /// Resultado de [CuentasService.listarMisCuentas].
 ///
@@ -14,7 +15,9 @@ class CuentasResult {
   final List<CuentaAhorro> cuentas;
   final String? error;
 
-  const CuentasResult.success(this.cuentas) : success = true, error = null;
+  const CuentasResult.success(this.cuentas)
+      : success = true,
+        error = null;
 
   const CuentasResult.failure(this.error)
       : success = false,
@@ -40,15 +43,13 @@ class CuentasService {
     final shouldClose = client == null;
 
     try {
-      final response = await httpClient
-          .get(
-            url,
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-          )
-          .timeout(const Duration(seconds: 5));
+      final response = await httpClient.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
@@ -69,6 +70,7 @@ class CuentasService {
       }
 
       if (response.statusCode == 401) {
+        await SessionManager.onUnauthorized();
         return const CuentasResult.failure(
           'Sesión no válida o expirada. Inicie sesión nuevamente.',
         );

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:forest_microfinance/services/mock_auth_service.dart';
+import 'package:forest_microfinance/services/secure_token_store.dart';
 
 void main() {
   group('AuthService.login envía JSON', () {
@@ -14,10 +15,27 @@ void main() {
       Uri? capturedUrl;
 
       final mockClient = MockClient((http.Request request) async {
+        if (request.url.path.endsWith('/auth/me')) {
+          return http.Response(
+            jsonEncode({
+              'id': 12,
+              'nombre': 'Sofia Socia',
+              'correo': 'usuario@cooperativa.com',
+              'estado': 'ACTIVO',
+              'rol': {
+                'id': 6,
+                'nombre': 'SOCIO',
+                'descripcion': 'Socio / Cliente',
+                'permisos': [],
+              },
+              'cooperativa_id': 1,
+            }),
+            200,
+          );
+        }
         capturedUrl = request.url;
         capturedContentType = request.headers['Content-Type'];
-        capturedBody =
-            jsonDecode(request.body) as Map<String, dynamic>;
+        capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
         return http.Response(
           jsonEncode({'access_token': 'token-test-123'}),
           200,
@@ -25,7 +43,7 @@ void main() {
         );
       });
 
-      final service = AuthService();
+      final service = AuthService(tokenStore: InMemorySecureTokenStore());
       final result = await service.login(
         '  usuario@cooperativa.com  ',
         'CoopIA#2026',
@@ -50,8 +68,8 @@ void main() {
     test('401 devuelve error de credenciales en español', () async {
       final mockClient = MockClient((_) async => http.Response('{}', 401));
 
-      final result = await AuthService()
-          .login('a@b.com', 'clave123', client: mockClient);
+      final result =
+          await AuthService().login('a@b.com', 'clave123', client: mockClient);
 
       expect(result.success, isFalse);
       expect(result.error, contains('Credenciales inválidas'));
@@ -60,8 +78,8 @@ void main() {
     test('400 devuelve error de credenciales en español', () async {
       final mockClient = MockClient((_) async => http.Response('{}', 400));
 
-      final result = await AuthService()
-          .login('a@b.com', 'clave123', client: mockClient);
+      final result =
+          await AuthService().login('a@b.com', 'clave123', client: mockClient);
 
       expect(result.success, isFalse);
       expect(result.error, contains('Credenciales inválidas'));

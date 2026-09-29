@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:forest_microfinance/core/theme/theme_provider.dart';
 import 'package:forest_microfinance/screens/login_screen.dart';
 import 'package:forest_microfinance/screens/main_navigation_screen.dart';
+import 'package:forest_microfinance/services/mock_auth_service.dart';
+import 'package:forest_microfinance/services/secure_token_store.dart';
 
 Widget _wrap(Widget child) {
   return ChangeNotifierProvider(
@@ -34,5 +36,17 @@ void main() {
     // No navegó a la pantalla principal.
     expect(find.byType(MainNavigationScreen), findsNothing);
     expect(find.byType(LoginScreen), findsOneWidget);
+  });
+
+  testWidgets('biometric button is hidden without an enabled stored token',
+      (WidgetTester tester) async {
+    final service = AuthService(
+      tokenStore: InMemorySecureTokenStore(),
+      biometric: FakeBiometricAuthenticator(true),
+    );
+    await tester.pumpWidget(_wrap(LoginScreen(authService: service)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ingresar con Biometría'), findsNothing);
   });
 }

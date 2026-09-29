@@ -40,8 +40,7 @@ void main() {
   });
 
   group('CuentasService.listarMisCuentas', () {
-    test('envía header Authorization exacto y parsea saldo/moneda',
-        () async {
+    test('envía header Authorization exacto y parsea saldo/moneda', () async {
       AuthService.tokenJWT = 'jwt-de-prueba';
 
       String? capturedAuth;
@@ -72,8 +71,8 @@ void main() {
       expect(result.success, isTrue);
       expect(result.error, isNull);
       // URL y header exactos exigidos.
-      expect(capturedUrl.toString(),
-          '${AuthService.baseUrl}/ahorros/mis-cuentas');
+      expect(
+          capturedUrl.toString(), '${AuthService.baseUrl}/ahorros/mis-cuentas');
       expect(capturedAuth, 'Bearer jwt-de-prueba');
 
       expect(result.cuentas, hasLength(2));
@@ -137,8 +136,7 @@ void main() {
 
     test('error 500 retorna failure sin crashear', () async {
       AuthService.tokenJWT = 'jwt-de-prueba';
-      final mockClient =
-          MockClient((_) async => http.Response('Error', 500));
+      final mockClient = MockClient((_) async => http.Response('Error', 500));
 
       final result =
           await CuentasService().listarMisCuentas(client: mockClient);

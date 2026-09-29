@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/transferencia_model.dart';
 import 'mock_auth_service.dart';
+import 'session_manager.dart';
 
 /// Resultado de [TransferenciasService.transferir].
 ///
@@ -88,6 +89,7 @@ class TransferenciasService {
       }
 
       if (response.statusCode == 401) {
+        await SessionManager.onUnauthorized();
         return const TransferenciaResult.failure(
           'Sesión no válida o expirada. Inicie sesión nuevamente.',
         );

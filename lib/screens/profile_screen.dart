@@ -4,10 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
-
+import '../services/mock_auth_service.dart';
 
 class SocioProfileScreen extends StatefulWidget {
-  const SocioProfileScreen({super.key});
+  final AuthService? authService;
+  const SocioProfileScreen({super.key, this.authService});
 
   @override
   State<SocioProfileScreen> createState() => _SocioProfileScreenState();
@@ -18,11 +19,65 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
   bool _biometricsEnabled = true;
   bool _notificationsEnabled = true;
   bool _copied = false;
+  late final AuthService _authService;
 
   // Datos del Socio (idealmente obtenidos desde un AuthProvider / UserState)
   final String _nombreSocio = 'Juan Carlos Pérez';
   final String _tipoSocio = 'Socio Platinum - Ahorrista';
   final String _codigoSocio = 'SOC-884920-BO';
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = widget.authService ?? AuthService();
+    _loadBiometricPreference();
+  }
+
+  Future<void> _loadBiometricPreference() async {
+    final enabled = await _authService.tokenStore.biometricsEnabled();
+    if (mounted) setState(() => _biometricsEnabled = enabled);
+  }
+
+  Future<void> _toggleBiometrics(bool enabled) async {
+    if (enabled) {
+      if (!await _authService.isBiometricAvailable()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Biometría no disponible.')),
+          );
+        }
+        return;
+      }
+      await _authService.enableBiometrics();
+    } else {
+      await _authService.disableBiometrics();
+    }
+    if (mounted) setState(() => _biometricsEnabled = enabled);
+  }
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Deseas cerrar tu sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _authService.logout();
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+  }
 
   void _copySocioId() {
     Clipboard.setData(ClipboardData(text: _codigoSocio));
@@ -46,11 +101,13 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDark;
 
-    final bgColor = isDark ? AppColors.darkBackground : AppColors.lightBackground;
+    final bgColor =
+        isDark ? AppColors.darkBackground : AppColors.lightBackground;
     final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final textColor = isDark ? AppColors.darkText : AppColors.lightText;
-    final subtextColor = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final subtextColor =
+        isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final accentColor = isDark ? AppColors.primary : AppColors.forestGreen;
 
     return Scaffold(
@@ -78,12 +135,16 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: accentColor.withOpacity(0.15),
-                        border: Border.all(color: accentColor.withOpacity(0.5), width: 2),
+                        border: Border.all(
+                            color: accentColor.withOpacity(0.5), width: 2),
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         _nombreSocio.split(' ').map((e) => e[0]).take(2).join(),
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: accentColor),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            color: accentColor),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -101,11 +162,13 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                           ),
                           const SizedBox(height: 2),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: accentColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: accentColor.withOpacity(0.3)),
+                              border: Border.all(
+                                  color: accentColor.withOpacity(0.3)),
                             ),
                             child: Text(
                               _tipoSocio,
@@ -123,12 +186,18 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                               children: [
                                 Text(
                                   'Código: $_codigoSocio',
-                                  style: TextStyle(fontSize: 11, color: subtextColor, fontFamily: 'monospace'),
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: subtextColor,
+                                      fontFamily: 'monospace'),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   _copied ? '✓ Copiado' : 'Copiar',
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: accentColor),
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: accentColor),
                                 ),
                               ],
                             ),
@@ -161,7 +230,9 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
-                        isDark ? Icons.nightlight_round : Icons.wb_sunny_rounded,
+                        isDark
+                            ? Icons.nightlight_round
+                            : Icons.wb_sunny_rounded,
                         color: accentColor,
                         size: 18,
                       ),
@@ -173,18 +244,25 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                         children: [
                           Text(
                             'Tema de la Aplicación',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: textColor),
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             isDark ? 'Modo Oscuro' : 'Modo Claro',
-                            style: TextStyle(fontSize: 11, color: accentColor, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: accentColor,
+                                fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 8),
-                    _buildThemeSegmentedPicker(themeProvider, isDark, subtextColor),
+                    _buildThemeSegmentedPicker(
+                        themeProvider, isDark, subtextColor),
                   ],
                 ),
               ),
@@ -202,29 +280,50 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                 child: Column(
                   children: [
                     ListTile(
-                      leading: _buildIconContainer(icon: Icons.lock_outline, accentColor: accentColor),
-                      title: Text('Cambiar PIN / Contraseña', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-                      subtitle: Text('Actualiza tu clave de acceso a la banca', style: TextStyle(fontSize: 11, color: subtextColor)),
-                      trailing: Icon(Icons.chevron_right, size: 18, color: subtextColor),
+                      leading: _buildIconContainer(
+                          icon: Icons.lock_outline, accentColor: accentColor),
+                      title: Text('Cambiar PIN / Contraseña',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: textColor)),
+                      subtitle: Text('Actualiza tu clave de acceso a la banca',
+                          style: TextStyle(fontSize: 11, color: subtextColor)),
+                      trailing: Icon(Icons.chevron_right,
+                          size: 18, color: subtextColor),
                       onTap: () {},
                     ),
                     Divider(height: 1, color: borderColor),
                     SwitchListTile(
-                      secondary: _buildIconContainer(icon: Icons.fingerprint, accentColor: accentColor),
-                      title: Text('Ingreso Biométrico', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-                      subtitle: Text('Usa Huella o FaceID para iniciar sesión', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      secondary: _buildIconContainer(
+                          icon: Icons.fingerprint, accentColor: accentColor),
+                      title: Text('Ingreso Biométrico',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: textColor)),
+                      subtitle: Text('Usa Huella o FaceID para iniciar sesión',
+                          style: TextStyle(fontSize: 11, color: subtextColor)),
                       value: _biometricsEnabled,
                       activeColor: AppColors.forestGreen,
-                      onChanged: (val) => setState(() => _biometricsEnabled = val),
+                      onChanged: _toggleBiometrics,
                     ),
                     Divider(height: 1, color: borderColor),
                     SwitchListTile(
-                      secondary: _buildIconContainer(icon: Icons.shield_outlined, accentColor: accentColor),
-                      title: Text('Autenticación en Dos Pasos (2FA)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-                      subtitle: Text('Confirmación de operaciones vía SMS/OTP', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      secondary: _buildIconContainer(
+                          icon: Icons.shield_outlined,
+                          accentColor: accentColor),
+                      title: Text('Autenticación en Dos Pasos (2FA)',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: textColor)),
+                      subtitle: Text('Confirmación de operaciones vía SMS/OTP',
+                          style: TextStyle(fontSize: 11, color: subtextColor)),
                       value: _twoFactorEnabled,
                       activeColor: AppColors.forestGreen,
-                      onChanged: (val) => setState(() => _twoFactorEnabled = val),
+                      onChanged: (val) =>
+                          setState(() => _twoFactorEnabled = val),
                     ),
                   ],
                 ),
@@ -243,20 +342,35 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                 child: Column(
                   children: [
                     ListTile(
-                      leading: _buildIconContainer(icon: Icons.badge_outlined, accentColor: accentColor),
-                      title: Text('Datos Personales', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-                      subtitle: Text('Dirección, teléfono y correo electrónico', style: TextStyle(fontSize: 11, color: subtextColor)),
-                      trailing: Icon(Icons.chevron_right, size: 18, color: subtextColor),
+                      leading: _buildIconContainer(
+                          icon: Icons.badge_outlined, accentColor: accentColor),
+                      title: Text('Datos Personales',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: textColor)),
+                      subtitle: Text('Dirección, teléfono y correo electrónico',
+                          style: TextStyle(fontSize: 11, color: subtextColor)),
+                      trailing: Icon(Icons.chevron_right,
+                          size: 18, color: subtextColor),
                       onTap: () {},
                     ),
                     Divider(height: 1, color: borderColor),
                     SwitchListTile(
-                      secondary: _buildIconContainer(icon: Icons.notifications_none_outlined, accentColor: accentColor),
-                      title: Text('Notificaciones de Movimientos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor)),
-                      subtitle: Text('Alertas sobre transferencias y pagos', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      secondary: _buildIconContainer(
+                          icon: Icons.notifications_none_outlined,
+                          accentColor: accentColor),
+                      title: Text('Notificaciones de Movimientos',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: textColor)),
+                      subtitle: Text('Alertas sobre transferencias y pagos',
+                          style: TextStyle(fontSize: 11, color: subtextColor)),
                       value: _notificationsEnabled,
                       activeColor: AppColors.forestGreen,
-                      onChanged: (val) => setState(() => _notificationsEnabled = val),
+                      onChanged: (val) =>
+                          setState(() => _notificationsEnabled = val),
                     ),
                   ],
                 ),
@@ -268,18 +382,22 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                 width: double.infinity,
                 height: 48,
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pushReplacementNamed('/login');
-                  },
-                  icon: const Icon(Icons.logout, color: Colors.redAccent, size: 18),
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout,
+                      color: Colors.redAccent, size: 18),
                   label: const Text(
                     'CERRAR SESIÓN',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.redAccent, letterSpacing: 0.8),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                        letterSpacing: 0.8),
                   ),
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Colors.redAccent.withOpacity(0.08),
                     side: BorderSide(color: Colors.redAccent.withOpacity(0.3)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ),
@@ -305,7 +423,8 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
     );
   }
 
-  Widget _buildIconContainer({required IconData icon, required Color accentColor}) {
+  Widget _buildIconContainer(
+      {required IconData icon, required Color accentColor}) {
     return Container(
       width: 36,
       height: 36,
@@ -317,7 +436,8 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
     );
   }
 
-  Widget _buildThemeSegmentedPicker(ThemeProvider themeProvider, bool isDark, Color subtextColor) {
+  Widget _buildThemeSegmentedPicker(
+      ThemeProvider themeProvider, bool isDark, Color subtextColor) {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
@@ -333,11 +453,15 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
               decoration: BoxDecoration(
                 color: !isDark ? Colors.white : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
-                boxShadow: !isDark ? [const BoxShadow(color: Colors.black12, blurRadius: 4)] : null,
+                boxShadow: !isDark
+                    ? [const BoxShadow(color: Colors.black12, blurRadius: 4)]
+                    : null,
               ),
               child: Row(
                 children: [
-                  Icon(Icons.wb_sunny, size: 13, color: !isDark ? AppColors.forestGreen : subtextColor),
+                  Icon(Icons.wb_sunny,
+                      size: 13,
+                      color: !isDark ? AppColors.forestGreen : subtextColor),
                   const SizedBox(width: 4),
                   Text(
                     'Claro',
@@ -358,11 +482,14 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
               decoration: BoxDecoration(
                 color: isDark ? AppColors.forestGreen : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
-                boxShadow: isDark ? [const BoxShadow(color: Colors.black26, blurRadius: 4)] : null,
+                boxShadow: isDark
+                    ? [const BoxShadow(color: Colors.black26, blurRadius: 4)]
+                    : null,
               ),
               child: Row(
                 children: [
-                  Icon(Icons.nightlight_round, size: 13, color: isDark ? Colors.white : subtextColor),
+                  Icon(Icons.nightlight_round,
+                      size: 13, color: isDark ? Colors.white : subtextColor),
                   const SizedBox(width: 4),
                   Text(
                     'Oscuro',

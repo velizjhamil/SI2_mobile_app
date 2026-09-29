@@ -7,30 +7,53 @@ import 'main_navigation_screen.dart';
 
 // Paleta Minimalista CoopIA (Extraída exactamente de tu imagen)
 abstract class CoopPalette {
-  static const Color c1 = Color(0xFF051F20); // Verde Noche Profundo (Muy Oscuro)
+  static const Color c1 =
+      Color(0xFF051F20); // Verde Noche Profundo (Muy Oscuro)
   static const Color c2 = Color(0xFF0B2B26); // Verde Bosque Oscuro
   static const Color c3 = Color(0xFF163832); // Verde Álamo Profundo
   static const Color c4 = Color(0xFF235347); // Verde Eucalipto
   static const Color c5 = Color(0xFF8EB69B); // Verde Sage Suave
-  static const Color c6 = Color(0xFFDAF1DE); // Verde Menta Desaturado (Muy Claro)
+  static const Color c6 =
+      Color(0xFFDAF1DE); // Verde Menta Desaturado (Muy Claro)
 }
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final AuthService? authService;
+  const LoginScreen({super.key, this.authService});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController(text: 'usuario@cooperativa.com');
+  final _emailController =
+      TextEditingController(text: 'usuario@cooperativa.com');
   final _passwordController = TextEditingController(text: 'CoopIA#2026');
   final _formKey = GlobalKey<FormState>();
-  final _authService = AuthService();
+  late final AuthService _authService;
+  late Future<bool> _biometricButton;
 
   bool _obscurePassword = true;
   bool _isLoading = false;
   bool _isBioLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = widget.authService ?? AuthService();
+    _biometricButton = _hasBiometricSession();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final message = ModalRoute.of(context)?.settings.arguments;
+      if (message is String && mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+    });
+  }
+
+  Future<bool> _hasBiometricSession() async =>
+      await _authService.tokenStore.biometricsEnabled() &&
+      (await _authService.tokenStore.readToken())?.isNotEmpty == true;
 
   @override
   void dispose() {
@@ -68,6 +91,34 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result.success) {
+      final biometricAvailable = await _authService.isBiometricAvailable();
+      final biometricEnabled =
+          await _authService.tokenStore.biometricsEnabled();
+      if (!mounted) return;
+      if (biometricAvailable && !biometricEnabled) {
+        final enable = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Ingreso biométrico'),
+            content: const Text('¿Activar ingreso con huella/Face ID?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Ahora no'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Activar'),
+              ),
+            ],
+          ),
+        );
+        if (enable == true) {
+          await _authService.enableBiometrics(
+            email: _emailController.text.trim(),
+          );
+        }
+      }
       _goToMain();
     } else {
       _showError(result.error ?? 'Error de autenticación.');
@@ -105,7 +156,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final surfaceColor = isDark ? CoopPalette.c2 : Colors.white;
     final textColor = isDark ? Colors.white : CoopPalette.c1;
     final subtitleColor = isDark ? CoopPalette.c5 : CoopPalette.c4;
-    final borderColor = isDark ? CoopPalette.c3 : CoopPalette.c5.withOpacity(0.3);
+    final borderColor =
+        isDark ? CoopPalette.c3 : CoopPalette.c5.withOpacity(0.3);
     final inputBg = isDark ? CoopPalette.c1 : CoopPalette.c6.withOpacity(0.4);
 
     return Scaffold(
@@ -182,27 +234,34 @@ class _LoginScreenState extends State<LoginScreen> {
                           key: const Key('emailField'),
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
-                          style: GoogleFonts.dmSans(color: textColor, fontSize: 13),
-                          validator: (v) => (v == null || !v.contains('@')) ? 'Correo no válido' : null,
+                          style: GoogleFonts.dmSans(
+                              color: textColor, fontSize: 13),
+                          validator: (v) => (v == null || !v.contains('@'))
+                              ? 'Correo no válido'
+                              : null,
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: inputBg,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide: BorderSide(color: borderColor),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(color: CoopPalette.c5, width: 1.2),
+                              borderSide: const BorderSide(
+                                  color: CoopPalette.c5, width: 1.2),
                             ),
                             errorBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(color: Colors.redAccent),
+                              borderSide:
+                                  const BorderSide(color: Colors.redAccent),
                             ),
                             focusedErrorBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(color: Colors.redAccent),
+                              borderSide:
+                                  const BorderSide(color: Colors.redAccent),
                             ),
                           ),
                         ),
@@ -223,19 +282,26 @@ class _LoginScreenState extends State<LoginScreen> {
                           key: const Key('passwordField'),
                           controller: _passwordController,
                           obscureText: _obscurePassword,
-                          style: GoogleFonts.dmSans(color: textColor, fontSize: 13),
-                          validator: (v) => (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+                          style: GoogleFonts.dmSans(
+                              color: textColor, fontSize: 13),
+                          validator: (v) => (v == null || v.length < 6)
+                              ? 'Mínimo 6 caracteres'
+                              : null,
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: inputBg,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
                                 color: subtitleColor,
                                 size: 18,
                               ),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -243,15 +309,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(color: CoopPalette.c5, width: 1.2),
+                              borderSide: const BorderSide(
+                                  color: CoopPalette.c5, width: 1.2),
                             ),
                             errorBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(color: Colors.redAccent),
+                              borderSide:
+                                  const BorderSide(color: Colors.redAccent),
                             ),
                             focusedErrorBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(color: Colors.redAccent),
+                              borderSide:
+                                  const BorderSide(color: Colors.redAccent),
                             ),
                           ),
                         ),
@@ -267,7 +336,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleLogin,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isDark ? CoopPalette.c3 : CoopPalette.c2,
+                        backgroundColor:
+                            isDark ? CoopPalette.c3 : CoopPalette.c2,
                         foregroundColor: CoopPalette.c6,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -278,7 +348,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(color: CoopPalette.c6, strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                  color: CoopPalette.c6, strokeWidth: 2),
                             )
                           : Text(
                               'Iniciar Sesión',
@@ -291,34 +362,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Botón Biométrico (Outlined Discreto)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 44,
-                    child: OutlinedButton.icon(
-                      onPressed: _isBioLoading ? null : _handleBiometricLogin,
-                      icon: _isBioLoading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: CoopPalette.c5),
-                            )
-                          : Icon(Icons.fingerprint, color: subtitleColor, size: 18),
-                      label: Text(
-                        'Ingresar con Biometría',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: subtitleColor,
+                  FutureBuilder<bool>(
+                    future: _biometricButton,
+                    builder: (context, snapshot) {
+                      if (snapshot.data != true) return const SizedBox.shrink();
+                      return SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: OutlinedButton.icon(
+                          onPressed:
+                              _isBioLoading ? null : _handleBiometricLogin,
+                          icon: _isBioLoading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: CoopPalette.c5),
+                                )
+                              : Icon(Icons.fingerprint,
+                                  color: subtitleColor, size: 18),
+                          label: Text(
+                            'Ingresar con Biometría',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: subtitleColor,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: borderColor),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
                         ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: borderColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ],
               ),

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/socio_model.dart';
 import 'mock_auth_service.dart';
+import 'session_manager.dart';
 
 class SocioResult<T> {
   final bool success;
@@ -183,6 +184,7 @@ class SocioService {
             decoded is Map<String, dynamic> ? decoded : {});
       }
       if (response.statusCode == 401) {
+        await SessionManager.onUnauthorized();
         return const SocioResult.failure(
             'Sesión no válida o expirada. Inicie sesión nuevamente.');
       }

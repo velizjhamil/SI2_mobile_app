@@ -178,8 +178,8 @@ void main() {
       );
 
       expect(result.success, isFalse);
-      expect(result.error,
-          'Una de las cuentas seleccionadas no está disponible.');
+      expect(
+          result.error, 'Una de las cuentas seleccionadas no está disponible.');
     });
 
     test('timeout retorna mensaje de conexión en español', () async {
