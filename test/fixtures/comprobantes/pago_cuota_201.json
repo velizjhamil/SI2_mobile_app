@@ -1,0 +1,56 @@
+{
+  "id": 223,
+  "numero_recibo": "REC-000001",
+  "fecha": "2026-10-08T07:09:45.275076",
+  "modalidad": "CUENTA",
+  "credito": {
+    "id": 1230,
+    "numero_credito": "RC-fb8f75d4c3"
+  },
+  "socio": {
+    "id": 2815,
+    "nombre_completo": "Receipt mobile",
+    "ci": "R-m-fb8f75d4c3"
+  },
+  "numero_cuota": 1,
+  "capital": "10.00",
+  "interes": "5.00",
+  "mora": "0.00",
+  "total": "15.00",
+  "dias_atraso": 1,
+  "moneda": {
+    "id": 1,
+    "codigo_iso": "BOB",
+    "nombre": "Boliviano",
+    "simbolo": "Bs."
+  },
+  "saldo_pendiente_credito": "990.00",
+  "credito_estado": "VIGENTE",
+  "cuenta": {
+    "id": 2379,
+    "numero": "RCPT-mobile-fb8f75d4c3-1"
+  },
+  "caja_nombre": null,
+  "usuario": {
+    "id": 7778,
+    "nombre": "Receipt mobile"
+  },
+  "declaracion_uif_id": null,
+  "comprobante": {
+    "id": 86,
+    "numero": "PAG-2026-000001",
+    "tipo": "PAGO_CUOTA",
+    "canal": "MOVIL",
+    "monto": "15.00",
+    "moneda": "BOB",
+    "cuenta_origen": "****c3-1",
+    "cuenta_destino": null,
+    "credito_id": 1230,
+    "numero_cuota": 1,
+    "glosa": null,
+    "emitido_en": "2026-10-08T07:09:45.314895+00:00",
+    "codigo_verificacion": "B2J6-K99A-H852-3DQW",
+    "url_verificacion": "http://localhost:8000/api/v1/verificacion/comprobantes/B2J6-K99A-H852-3DQW"
+  },
+  "comprobante_id": 86
+}

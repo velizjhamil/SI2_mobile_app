@@ -300,6 +300,49 @@ void main() {
       expect(find.byType(TransferenciaScreen), findsNothing);
     });
 
+    testWidgets('successful transfer opens its receipt before closing',
+        (tester) async {
+      final transferencias = FakeTransferenciasService()
+        ..respuesta = TransferenciaResult.success(
+          TransferenciaModel.fromJson({
+            'transaccion_salida_id': 101,
+            'transaccion_entrada_id': 102,
+            'cuenta_origen': _cuentaJson(
+                id: 7,
+                numero: 'AH-000123',
+                estado: 'ACTIVA',
+                codigoMoneda: 'BOB',
+                disponible: 900),
+            'cuenta_destino': _cuentaJson(
+                id: 8,
+                numero: 'AH-000124',
+                estado: 'ACTIVA',
+                codigoMoneda: 'BOB',
+                disponible: 600),
+            'monto': '100.00',
+            'fecha_hora': '2026-10-08T07:09:45',
+            'comprobante': {
+              'id': 85,
+              'numero': 'TRF-2026-000001',
+              'tipo': 'TRANSFERENCIA',
+              'canal': 'MOVIL',
+              'monto': '100.00',
+              'moneda': 'BOB',
+              'cuenta_origen': '****0123',
+              'cuenta_destino': '****0124',
+              'codigo_verificacion': 'S083-BHSM-0876-2C2G',
+              'url_verificacion': 'https://example.test/verify',
+            },
+          }),
+        );
+      await _pumpScreen(tester, transferencias);
+      await _formularioValido(tester);
+      await _confirmar(tester);
+
+      expect(find.text('TRF-2026-000001'), findsOneWidget);
+      expect(find.text('S083-BHSM-0876-2C2G'), findsOneWidget);
+    });
+
     testWidgets(
         'cambiar el origen invalida el destino elegido si ya no coincide '
         '(otra moneda)', (tester) async {

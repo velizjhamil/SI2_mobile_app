@@ -1,0 +1,43 @@
+[
+  {
+    "id": 223,
+    "numero_recibo": "REC-000001",
+    "fecha": "2026-10-08T07:09:45.275076",
+    "modalidad": "CUENTA",
+    "credito": {
+      "id": 1230,
+      "numero_credito": "RC-fb8f75d4c3"
+    },
+    "socio": {
+      "id": 2815,
+      "nombre_completo": "Receipt mobile",
+      "ci": "R-m-fb8f75d4c3"
+    },
+    "numero_cuota": 1,
+    "capital": "10.00",
+    "interes": "5.00",
+    "mora": "0.00",
+    "total": "15.00",
+    "dias_atraso": 1,
+    "moneda": {
+      "id": 1,
+      "codigo_iso": "BOB",
+      "nombre": "Boliviano",
+      "simbolo": "Bs."
+    },
+    "saldo_pendiente_credito": "990.00",
+    "credito_estado": "VIGENTE",
+    "cuenta": {
+      "id": 2379,
+      "numero": "RCPT-mobile-fb8f75d4c3-1"
+    },
+    "caja_nombre": null,
+    "usuario": {
+      "id": 7778,
+      "nombre": "Receipt mobile"
+    },
+    "declaracion_uif_id": null,
+    "comprobante": null,
+    "comprobante_id": 86
+  }
+]

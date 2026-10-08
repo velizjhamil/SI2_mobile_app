@@ -1,0 +1,11 @@
+{
+  "estado": "VÁLIDO",
+  "numero": "TRF-2026-000001",
+  "tipo": "TRANSFERENCIA",
+  "emitido_en": "2026-10-08T07:09:45.203380+00:00",
+  "monto": "150.00",
+  "moneda": "BOB",
+  "cooperativa": "Receipt fb8f75d4c3",
+  "cuenta_origen": "****c3-1",
+  "cuenta_destino": "****c3-2"
+}

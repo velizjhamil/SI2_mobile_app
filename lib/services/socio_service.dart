@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/socio_model.dart';
+import '../models/comprobante_model.dart';
 import 'mock_auth_service.dart';
 import 'session_manager.dart';
 
@@ -57,9 +58,13 @@ class SocioService {
       body: {'cuenta_ahorro_id': savingsAccountId},
       client: client,
     );
-    return result.success
-        ? SocioResult.success(CreditPayment(result.value!))
-        : SocioResult.failure(result.error);
+    if (!result.success) return SocioResult.failure(result.error);
+    final rawReceipt = result.value!['comprobante'];
+    final receipt = rawReceipt is Map
+        ? Comprobante.fromJson(rawReceipt.cast<String, dynamic>())
+        : null;
+    return SocioResult.success(
+        CreditPayment(result.value!, comprobante: receipt));
   }
 
   Future<SocioResult<List<Map<String, dynamic>>>> paymentHistory(

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../models/socio_model.dart';
 import '../services/cuentas_service.dart';
+import '../services/comprobantes_service.dart';
 import '../services/socio_service.dart';
+import 'comprobante_screen.dart';
 
 class CuentaExtractosScreen extends StatefulWidget {
   final CuentasService? service;
@@ -62,7 +64,13 @@ class _CuentaExtractosScreenState extends State<CuentaExtractosScreen> {
 class ExtractoScreen extends StatefulWidget {
   final int accountId;
   final SocioService? service;
-  const ExtractoScreen({super.key, required this.accountId, this.service});
+  final ComprobantesService? receiptsService;
+  const ExtractoScreen({
+    super.key,
+    required this.accountId,
+    this.service,
+    this.receiptsService,
+  });
   @override
   State<ExtractoScreen> createState() => _ExtractoScreenState();
 }
@@ -70,6 +78,8 @@ class ExtractoScreen extends StatefulWidget {
 class _ExtractoScreenState extends State<ExtractoScreen> {
   late Future<SocioResult<ExtractoCuenta>> _future;
   late final SocioService _service = widget.service ?? SocioService();
+  late final ComprobantesService _receiptsService =
+      widget.receiptsService ?? ComprobantesService();
   int _offset = 0;
   DateTime? _from;
   DateTime? _to;
@@ -163,6 +173,28 @@ class _ExtractoScreenState extends State<ExtractoScreen> {
                       subtitle: Text('${m.date} · ${m.channel}'),
                       trailing: Text(
                           '${m.direction == 'DEBITO' ? '-' : '+'}${m.amount}\nSaldo ${m.resultingBalance}'),
+                      onTap: m.receiptId == null
+                          ? null
+                          : () async {
+                              final result =
+                                  await _receiptsService.detail(m.receiptId!);
+                              if (!mounted) return;
+                              if (result.success && result.value != null) {
+                                await Navigator.push(
+                                  this.context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ComprobanteScreen(
+                                        comprobante: result.value!),
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(this.context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(result.error ??
+                                          'No se pudo cargar el comprobante.')),
+                                );
+                              }
+                            },
                     )),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -387,7 +419,18 @@ class _PagoCreditoScreenState extends State<PagoCreditoScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
             result.success ? 'Pago realizado correctamente.' : result.error!)));
-    if (result.success) Navigator.pop(context);
+    if (result.success && result.value?.comprobante != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              ComprobanteScreen(comprobante: result.value!.comprobante!),
+        ),
+      );
+      if (mounted) Navigator.pop(context, true);
+    } else if (result.success) {
+      Navigator.pop(context, true);
+    }
   }
 }
 

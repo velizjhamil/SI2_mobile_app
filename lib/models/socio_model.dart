@@ -1,4 +1,5 @@
 export 'solicitud_credito_model.dart';
+import 'comprobante_model.dart';
 
 class ExtractoMovimiento {
   final int transactionId;
@@ -9,6 +10,7 @@ class ExtractoMovimiento {
   final String amount;
   final String direction;
   final String resultingBalance;
+  final int? receiptId;
 
   const ExtractoMovimiento({
     required this.transactionId,
@@ -19,6 +21,7 @@ class ExtractoMovimiento {
     required this.amount,
     required this.direction,
     required this.resultingBalance,
+    required this.receiptId,
   });
 
   factory ExtractoMovimiento.fromJson(Map<String, dynamic> json) =>
@@ -31,6 +34,7 @@ class ExtractoMovimiento {
         amount: _string(json['monto']),
         direction: _string(json['sentido']),
         resultingBalance: _string(json['saldo_resultante']),
+        receiptId: _nullableInt(json['comprobante_id']),
       );
 }
 
@@ -130,7 +134,8 @@ class SocioCredit {
 
 class CreditPayment {
   final Map<String, dynamic> data;
-  const CreditPayment(this.data);
+  final Comprobante? comprobante;
+  const CreditPayment(this.data, {this.comprobante});
 }
 
 class CreditScheduleItem {
@@ -286,6 +291,7 @@ class RecreditOffer {
 String _string(dynamic value) => value?.toString() ?? '';
 int _int(dynamic value) =>
     value is num ? value.toInt() : int.tryParse(_string(value)) ?? 0;
+int? _nullableInt(dynamic value) => value == null ? null : _int(value);
 
 extension _NullableMap<T> on T? {
   R? let<R>(R Function(T value) transform) =>

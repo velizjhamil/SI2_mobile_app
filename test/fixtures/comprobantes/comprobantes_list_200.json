@@ -1,0 +1,34 @@
+[
+  {
+    "id": 86,
+    "numero": "PAG-2026-000001",
+    "tipo": "PAGO_CUOTA",
+    "canal": "MOVIL",
+    "monto": "15.00",
+    "moneda": "BOB",
+    "cuenta_origen": "****c3-1",
+    "cuenta_destino": null,
+    "credito_id": 1230,
+    "numero_cuota": 1,
+    "glosa": null,
+    "emitido_en": "2026-10-08T07:09:45.314895+00:00",
+    "codigo_verificacion": "B2J6-K99A-H852-3DQW",
+    "url_verificacion": "http://localhost:8000/api/v1/verificacion/comprobantes/B2J6-K99A-H852-3DQW"
+  },
+  {
+    "id": 85,
+    "numero": "TRF-2026-000001",
+    "tipo": "TRANSFERENCIA",
+    "canal": "MOVIL",
+    "monto": "150.00",
+    "moneda": "BOB",
+    "cuenta_origen": "****c3-1",
+    "cuenta_destino": "****c3-2",
+    "credito_id": null,
+    "numero_cuota": null,
+    "glosa": "Ahorro mensual",
+    "emitido_en": "2026-10-08T07:09:45.203380+00:00",
+    "codigo_verificacion": "S083-BHSM-0876-2C2G",
+    "url_verificacion": "http://localhost:8000/api/v1/verificacion/comprobantes/S083-BHSM-0876-2C2G"
+  }
+]

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 import '../models/cuenta_ahorro_model.dart';
+import '../screens/comprobante_screen.dart';
 import '../services/cuentas_service.dart';
 import '../services/transferencias_service.dart';
 
@@ -171,6 +172,15 @@ class _TransferenciaScreenState extends State<TransferenciaScreen> {
       );
       if (!mounted) return;
       if (resultado.success) {
+        final receipt = resultado.transferencia?.comprobante;
+        if (receipt != null) {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ComprobanteScreen(comprobante: receipt),
+            ),
+          );
+        }
+        if (!mounted) return;
         Navigator.of(context).pop(true);
       } else {
         setState(() {

@@ -9,6 +9,7 @@
 // puede serializar decimales de distintas formas.
 
 import 'cuenta_ahorro_model.dart';
+import 'comprobante_model.dart';
 
 // Successful transfer between two accounts owned by the same socio.
 class TransferenciaModel {
@@ -19,6 +20,7 @@ class TransferenciaModel {
   final double monto;
   final String? glosa;
   final String fechaHora;
+  final Comprobante? comprobante;
 
   const TransferenciaModel({
     required this.transaccionSalidaId,
@@ -28,6 +30,7 @@ class TransferenciaModel {
     required this.monto,
     required this.glosa,
     required this.fechaHora,
+    required this.comprobante,
   });
 
   factory TransferenciaModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +49,9 @@ class TransferenciaModel {
       monto: _toDouble(json['monto']),
       glosa: glosaRaw?.toString(),
       fechaHora: json['fecha_hora']?.toString() ?? '',
+      comprobante: (json['comprobante'] as Map?)
+          ?.cast<String, dynamic>()
+          .let(Comprobante.fromJson),
     );
   }
 }
@@ -76,4 +82,9 @@ int _toInt(dynamic value) {
   if (value is num) return value.toInt();
   if (value is String) return int.tryParse(value.trim()) ?? 0;
   return 0;
+}
+
+extension _NullableMap<T> on T? {
+  R? let<R>(R Function(T value) transform) =>
+      this == null ? null : transform(this as T);
 }

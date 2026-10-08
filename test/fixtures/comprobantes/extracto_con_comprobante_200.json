@@ -1,0 +1,39 @@
+{
+  "cuenta": {
+    "id": 2379,
+    "numero_cuenta": "RCPT-mobile-fb8f75d4c3-1",
+    "moneda": "BOB",
+    "saldo_disponible": "835.00"
+  },
+  "desde": "2026-09-08",
+  "hasta": "2026-10-08",
+  "saldo_inicial": "1000.00",
+  "total_creditos": "0.00",
+  "total_debitos": "165.00",
+  "saldo_final": "835.00",
+  "total": 2,
+  "movimientos": [
+    {
+      "transaccion_id": 1168,
+      "fecha": "2026-10-08T07:09:45.275076",
+      "tipo": "PAGO_CUOTA",
+      "descripcion": "Pago Cuota",
+      "canal": "MOVIL",
+      "monto": "15.00",
+      "sentido": "DEBITO",
+      "saldo_resultante": "835.00",
+      "comprobante_id": 86
+    },
+    {
+      "transaccion_id": 1166,
+      "fecha": "2026-10-08T07:09:45.193912",
+      "tipo": "TRANSFERENCIA_SALIDA",
+      "descripcion": "Transferencia Salida",
+      "canal": "MOVIL",
+      "monto": "150.00",
+      "sentido": "DEBITO",
+      "saldo_resultante": "850.00",
+      "comprobante_id": 85
+    }
+  ]
+}

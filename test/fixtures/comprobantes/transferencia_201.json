@@ -1,0 +1,55 @@
+{
+  "transaccion_salida_id": 1166,
+  "transaccion_entrada_id": 1167,
+  "cuenta_origen": {
+    "id": 2379,
+    "numero": "RCPT-mobile-fb8f75d4c3-1",
+    "tipo_producto": "VISTA",
+    "saldo_disponible": "850.00",
+    "saldo_bloqueado": "0.00",
+    "estado": "ACTIVA",
+    "fecha_registro": "2026-10-08",
+    "socio_id": 2815,
+    "moneda": {
+      "id": 1,
+      "codigo_iso": "BOB",
+      "nombre": "Boliviano",
+      "simbolo": "Bs."
+    }
+  },
+  "cuenta_destino": {
+    "id": 2380,
+    "numero": "RCPT-mobile-fb8f75d4c3-2",
+    "tipo_producto": "VISTA",
+    "saldo_disponible": "170.00",
+    "saldo_bloqueado": "0.00",
+    "estado": "ACTIVA",
+    "fecha_registro": "2026-10-08",
+    "socio_id": 2815,
+    "moneda": {
+      "id": 1,
+      "codigo_iso": "BOB",
+      "nombre": "Boliviano",
+      "simbolo": "Bs."
+    }
+  },
+  "monto": "150.00",
+  "glosa": "Ahorro mensual",
+  "fecha_hora": "2026-10-08T07:09:45.193912",
+  "comprobante": {
+    "id": 85,
+    "numero": "TRF-2026-000001",
+    "tipo": "TRANSFERENCIA",
+    "canal": "MOVIL",
+    "monto": "150.00",
+    "moneda": "BOB",
+    "cuenta_origen": "****c3-1",
+    "cuenta_destino": "****c3-2",
+    "credito_id": null,
+    "numero_cuota": null,
+    "glosa": "Ahorro mensual",
+    "emitido_en": "2026-10-08T07:09:45.203380+00:00",
+    "codigo_verificacion": "S083-BHSM-0876-2C2G",
+    "url_verificacion": "http://localhost:8000/api/v1/verificacion/comprobantes/S083-BHSM-0876-2C2G"
+  }
+}
