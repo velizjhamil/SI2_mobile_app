@@ -144,6 +144,7 @@ class CreditScheduleItem {
   final String capital;
   final String interest;
   final String insurance;
+  final String mora;
   final String totalAmount;
   final String capitalBalance;
   final String status;
@@ -155,11 +156,17 @@ class CreditScheduleItem {
     required this.capital,
     required this.interest,
     required this.insurance,
+    this.mora = '0.00',
     required this.totalAmount,
     required this.capitalBalance,
     required this.status,
     required this.paymentDate,
   });
+
+  bool get isPaid =>
+      status.toUpperCase() == 'PAGADA' || status.toUpperCase() == 'PAGADO';
+  bool get isVencida => status.toUpperCase() == 'VENCIDA';
+  bool get isPendiente => !isPaid && !isVencida;
 
   factory CreditScheduleItem.fromJson(Map<String, dynamic> json) =>
       CreditScheduleItem(
@@ -168,6 +175,7 @@ class CreditScheduleItem {
         capital: _string(json['capital']),
         interest: _string(json['interes']),
         insurance: _string(json['seguro']),
+        mora: json['mora'] != null ? _string(json['mora']) : '0.00',
         totalAmount: _string(json['monto_total']),
         capitalBalance: _string(json['saldo_capital']),
         status: _string(json['estado']),
@@ -286,6 +294,76 @@ class RecreditOffer {
         amount: _string(json['monto']),
         termMonths: _int(json['plazo_meses']),
       );
+}
+
+class SocioPerfil {
+  final int id;
+  final String codigoSocio;
+  final String ci;
+  final String nombre;
+  final String apellido;
+  final String nombreCompleto;
+  final String direccion;
+  final String telefono;
+  final String correo;
+  final String estado;
+  final String categoria;
+  final String? fechaRegistro;
+  final int? cooperativaId;
+
+  const SocioPerfil({
+    required this.id,
+    required this.codigoSocio,
+    required this.ci,
+    required this.nombre,
+    required this.apellido,
+    required this.nombreCompleto,
+    required this.direccion,
+    required this.telefono,
+    required this.correo,
+    required this.estado,
+    required this.categoria,
+    this.fechaRegistro,
+    this.cooperativaId,
+  });
+
+  factory SocioPerfil.fromJson(Map<String, dynamic> json) => SocioPerfil(
+        id: _int(json['id']),
+        codigoSocio: _string(json['codigo_socio']),
+        ci: _string(json['ci']),
+        nombre: _string(json['nombre']),
+        apellido: _string(json['apellido']),
+        nombreCompleto: _string(json['nombre_completo']),
+        direccion: _string(json['direccion']),
+        telefono: _string(json['telefono']),
+        correo: _string(json['correo']),
+        estado: _string(json['estado']),
+        categoria: _string(json['categoria']),
+        fechaRegistro: json['fecha_registro']?.toString(),
+        cooperativaId: _nullableInt(json['cooperativa_id']),
+      );
+
+  SocioPerfil copyWith({
+    String? direccion,
+    String? telefono,
+    String? correo,
+  }) {
+    return SocioPerfil(
+      id: id,
+      codigoSocio: codigoSocio,
+      ci: ci,
+      nombre: nombre,
+      apellido: apellido,
+      nombreCompleto: nombreCompleto,
+      direccion: direccion ?? this.direccion,
+      telefono: telefono ?? this.telefono,
+      correo: correo ?? this.correo,
+      estado: estado,
+      categoria: categoria,
+      fechaRegistro: fechaRegistro,
+      cooperativaId: cooperativaId,
+    );
+  }
 }
 
 String _string(dynamic value) => value?.toString() ?? '';

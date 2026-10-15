@@ -8,11 +8,16 @@ import 'screens/main_navigation_screen.dart';
 import 'screens/campo_screens.dart';
 import 'services/session_manager.dart';
 
+import 'services/notification_service.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+      ],
       child: const ForestMicrofinanceApp(),
     ),
   );

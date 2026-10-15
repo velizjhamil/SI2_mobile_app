@@ -6,6 +6,7 @@ import '../core/theme/theme_provider.dart';
 import '../models/cuenta_ahorro_model.dart';
 import '../screens/comprobante_screen.dart';
 import '../services/cuentas_service.dart';
+import '../services/notification_service.dart';
 import '../services/transferencias_service.dart';
 
 /// Transferencia de saldo entre dos cuentas propias del socio.
@@ -172,6 +173,14 @@ class _TransferenciaScreenState extends State<TransferenciaScreen> {
       );
       if (!mounted) return;
       if (resultado.success) {
+        try {
+          Provider.of<NotificationProvider>(context, listen: false).notifyDiscount(
+            monto: monto,
+            moneda: origen.currency.symbol,
+            cuentaNumero: origen.accountNumber,
+            context: context,
+          );
+        } catch (_) {}
         final receipt = resultado.transferencia?.comprobante;
         if (receipt != null) {
           await Navigator.of(context).push(

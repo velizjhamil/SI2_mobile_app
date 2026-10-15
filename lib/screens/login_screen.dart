@@ -176,8 +176,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final textColor = isDark ? Colors.white : CoopPalette.c1;
     final subtitleColor = isDark ? CoopPalette.c5 : CoopPalette.c4;
     final borderColor =
-        isDark ? CoopPalette.c3 : CoopPalette.c5.withOpacity(0.3);
-    final inputBg = isDark ? CoopPalette.c1 : CoopPalette.c6.withOpacity(0.4);
+        isDark ? CoopPalette.c3 : CoopPalette.c5.withValues(alpha: 0.3);
+    final inputBg = isDark ? CoopPalette.c1 : CoopPalette.c6.withValues(alpha: 0.4);
 
     return Scaffold(
       backgroundColor: bgColor,

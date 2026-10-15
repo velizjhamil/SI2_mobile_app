@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 import 'transferencia_screen.dart';
+import 'saldos_extractos_screen.dart';
 import 'socio_screens.dart';
 import 'solicitud_credito_screens.dart';
 
@@ -32,7 +33,7 @@ class ServicesScreen extends StatelessWidget {
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.forestGreen.withOpacity(0.2),
+              color: AppColors.forestGreen.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -64,7 +65,7 @@ class ServicesScreen extends StatelessWidget {
               'Detalle de cuentas y exportación PDF',
               'Operativo',
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => const CuentaExtractosScreen()))),
+                  builder: (_) => const SaldosExtractosScreen()))),
           _buildServiceTile(
               context,
               Icons.swap_horiz,
@@ -203,7 +204,7 @@ class ServicesScreen extends StatelessWidget {
           width: 38,
           height: 38,
           decoration: BoxDecoration(
-            color: AppColors.forestGreen.withOpacity(0.15),
+            color: AppColors.forestGreen.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: accentColor, size: 20),
@@ -224,8 +225,8 @@ class ServicesScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withOpacity(0.05)
-                    : Colors.black.withOpacity(0.05),
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.black.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(

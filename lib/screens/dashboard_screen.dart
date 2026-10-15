@@ -5,7 +5,12 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 import '../models/cuenta_ahorro_model.dart';
 import '../services/cuentas_service.dart';
+import '../services/notification_service.dart';
+import '../services/socio_service.dart';
 import '../widgets/asset_card.dart';
+import 'saldos_extractos_screen.dart';
+import 'socio_screens.dart';
+import 'solicitud_credito_screens.dart';
 import 'transferencia_screen.dart';
 
 /// Consulta de Saldos y Extractos con datos reales del backend.
@@ -31,6 +36,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _service = widget.cuentasService ?? CuentasService();
     _future = _service.listarMisCuentas();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        try {
+          final notif =
+              Provider.of<NotificationProvider>(context, listen: false);
+          notif.onExternalMovementDetected = _recargar;
+          notif.startMonitoring(context: context);
+        } catch (_) {}
+      }
+    });
   }
 
   void _recargar() {
@@ -67,7 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   : AppColors.lightSurfaceHigh,
               shape: BoxShape.circle,
               border: Border.all(
-                  color: AppColors.forestGreen.withOpacity(0.4), width: 1.5),
+                  color: AppColors.forestGreen.withValues(alpha: 0.4), width: 1.5),
             ),
             child: Icon(Icons.person, color: accentColor, size: 20),
           ),
@@ -99,16 +115,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: _recargar,
             icon: Icon(Icons.refresh, color: subtextColor, size: 20),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: Icon(Icons.notifications_none, color: accentColor, size: 20),
+          Builder(
+            builder: (context) {
+              NotificationProvider? notif;
+              try {
+                notif = Provider.of<NotificationProvider>(context);
+              } catch (_) {}
+              final unreadCount = notif?.unreadCount ?? 0;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    onPressed: () => showNotificationTray(context),
+                    icon: Icon(Icons.notifications_none,
+                        color: accentColor, size: 20),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints:
+                            const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Text(
+                          '$unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Column(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _recargar();
+          await _future;
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. Sección Valor del Portafolio (saldo real)
@@ -156,8 +216,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 /// Cuerpo con datos reales: total, bloqueado, distribución y cuentas.
@@ -210,29 +271,40 @@ class _CuentasBody extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.forestGreen.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: AppColors.forestGreen.withOpacity(0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.account_balance_wallet,
-                      color: accentColor, size: 13),
-                  const SizedBox(width: 3),
-                  Text(
-                    '${cuentas.length} ${cuentas.length == 1 ? 'cuenta' : 'cuentas'}',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: accentColor,
-                    ),
+            InkWell(
+              onTap: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SaldosExtractosScreen(),
                   ),
-                ],
+                );
+                onRetry();
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.forestGreen.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: AppColors.forestGreen.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.account_balance_wallet,
+                        color: accentColor, size: 13),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${cuentas.length} ${cuentas.length == 1 ? 'cuenta' : 'cuentas'}',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: accentColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -253,7 +325,7 @@ class _CuentasBody extends StatelessWidget {
               child: SizedBox(
                 height: 44,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => _mostrarDialogoDeposito(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.forestGreen,
                     foregroundColor: Colors.white,
@@ -330,7 +402,19 @@ class _CuentasBody extends StatelessWidget {
           childAspectRatio: 1.15,
           children: [
             _buildQuickActionTile(
-                context, Icons.account_balance_wallet, 'Cuentas', 'Saldos & Ext.'),
+              context,
+              Icons.account_balance_wallet,
+              'Cuentas',
+              'Saldos & Ext.',
+              onTap: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SaldosExtractosScreen(),
+                  ),
+                );
+                onRetry();
+              },
+            ),
             _buildQuickActionTile(
               context,
               Icons.swap_horiz,
@@ -346,13 +430,48 @@ class _CuentasBody extends StatelessWidget {
               },
             ),
             _buildQuickActionTile(
-                context, Icons.credit_card, 'Créditos', 'Pago Cuotas'),
+              context,
+              Icons.credit_card,
+              'Créditos',
+              'Pago Cuotas',
+              onTap: () async {
+                final exito = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => const CreditosScreen(),
+                  ),
+                );
+                if (exito == true) onRetry();
+              },
+            ),
             _buildQuickActionTile(
-                context, Icons.calendar_month, 'Inversión', 'Cronograma DPF'),
+              context,
+              Icons.calendar_month,
+              'Inversión',
+              'Cronograma DPF',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const DpfScreen(),
+                ),
+              ),
+            ),
             _buildQuickActionTile(
-                context, Icons.description, 'Préstamos', 'Solicitud Créd.'),
+              context,
+              Icons.description,
+              'Préstamos',
+              'Solicitud Créd.',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const ProductosCreditoScreen(),
+                ),
+              ),
+            ),
             _buildQuickActionTile(
-                context, Icons.assignment_ind, 'Terreno', 'Oficial Campo'),
+              context,
+              Icons.assignment_ind,
+              'Terreno',
+              'Oficial Campo',
+              onTap: () => Navigator.of(context).pushNamed('/campo'),
+            ),
           ],
         ),
         const SizedBox(height: 22),
@@ -388,19 +507,35 @@ class _CuentasBody extends StatelessWidget {
               const SizedBox(height: 14),
               for (var i = 0; i < cuentas.length; i++) ...[
                 if (i > 0) const SizedBox(height: 8),
-                _buildAllocationBar(
-                  '${cuentas[i].productType} • ${cuentas[i].accountNumber}',
-                  totalDisponible > 0
-                      ? (cuentas[i].availableBalance /
-                              totalDisponible *
-                              100)
-                      : 0,
-                  i == 0
-                      ? accentColor
-                      : (i == 1
-                          ? AppColors.forestGreen
-                          : const Color(0xFF526059)),
-                  textColor,
+                InkWell(
+                  onTap: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SaldosExtractosScreen(
+                          initialAccountId: cuentas[i].id,
+                        ),
+                      ),
+                    );
+                    onRetry();
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: _buildAllocationBar(
+                      '${cuentas[i].productType} • ${cuentas[i].accountNumber}',
+                      totalDisponible > 0
+                          ? (cuentas[i].availableBalance /
+                                  totalDisponible *
+                                  100)
+                          : 0,
+                      i == 0
+                          ? accentColor
+                          : (i == 1
+                              ? AppColors.forestGreen
+                              : const Color(0xFF526059)),
+                      textColor,
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -440,7 +575,7 @@ class _CuentasBody extends StatelessWidget {
               Container(
                 height: 6,
                 decoration: BoxDecoration(
-                  color: AppColors.forestGreen.withOpacity(0.2),
+                  color: AppColors.forestGreen.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: FractionallySizedBox(
@@ -494,9 +629,232 @@ class _CuentasBody extends StatelessWidget {
                 'Bloqueado: ${cuentas[i].formattedBlocked} • ${cuentas[i].registrationDate}',
             icon: Icons.account_balance,
             isHighlighted: i == 0,
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => SaldosExtractosScreen(
+                    initialAccountId: cuentas[i].id,
+                  ),
+                ),
+              );
+              onRetry();
+            },
           ),
         ],
       ],
+    );
+  }
+
+  Future<void> _mostrarDialogoDeposito(BuildContext context) async {
+    if (cuentas.isEmpty) return;
+    CuentaAhorro selectedCuenta = cuentas.first;
+    final amountController = TextEditingController();
+    final conceptController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final sheetBg = isDark ? const Color(0xFF1E2420) : Colors.white;
+          final textColor = isDark ? Colors.white : const Color(0xFF101412);
+          final subtextColor = isDark ? Colors.white70 : Colors.black54;
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: sheetBg,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Depositar Fondos',
+                          style: GoogleFonts.manrope(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Cuenta de destino',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: subtextColor,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<int>(
+                      initialValue: selectedCuenta.id,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                      ),
+                      items: cuentas.map((c) {
+                        return DropdownMenuItem<int>(
+                          value: c.id,
+                          child: Text(
+                            '${c.accountNumber} • ${c.currency.currencyCode} (${c.formattedAvailable})',
+                            style: GoogleFonts.dmSans(fontSize: 13),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setSheetState(() {
+                            selectedCuenta =
+                                cuentas.firstWhere((c) => c.id == val);
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: amountController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Monto a depositar',
+                        prefixText: '${selectedCuenta.currency.symbol} ',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Ingresa un monto';
+                        }
+                        final num = double.tryParse(
+                            val.trim().replaceAll(',', '.'));
+                        if (num == null || num <= 0) {
+                          return 'Ingresa un monto válido mayor a 0';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: conceptController,
+                      decoration: InputDecoration(
+                        labelText: 'Concepto (Opcional)',
+                        hintText: 'Ej. Depósito móvil',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.forestGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                if (!formKey.currentState!.validate()) return;
+                                setSheetState(() => isSubmitting = true);
+                                final monto = double.parse(
+                                  amountController.text
+                                      .trim()
+                                      .replaceAll(',', '.'),
+                                );
+                                final socioService = SocioService();
+                                final res = await socioService.deposit(
+                                  accountId: selectedCuenta.id,
+                                  amount: monto,
+                                  concept:
+                                      conceptController.text.trim().isEmpty
+                                          ? null
+                                          : conceptController.text.trim(),
+                                );
+                                if (!context.mounted) return;
+                                if (res.success) {
+                                  Navigator.pop(context);
+                                  try {
+                                    final notif =
+                                        Provider.of<NotificationProvider>(
+                                      context,
+                                      listen: false,
+                                    );
+                                    notif.notifyDeposit(
+                                      monto: monto,
+                                      moneda: selectedCuenta.currency.symbol,
+                                      cuentaNumero:
+                                          selectedCuenta.accountNumber,
+                                      context: context,
+                                    );
+                                  } catch (_) {}
+                                  onRetry();
+                                } else {
+                                  setSheetState(() => isSubmitting = false);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(res.error ??
+                                          'Error al realizar el depósito'),
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                }
+                              },
+                        child: isSubmitting
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                'CONFIRMAR DEPÓSITO',
+                                style: GoogleFonts.dmSans(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -526,7 +884,7 @@ class _CuentasBody extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: AppColors.forestGreen.withOpacity(0.15),
+              color: AppColors.forestGreen.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: accentColor, size: 16),
@@ -586,7 +944,7 @@ class _CuentasBody extends StatelessWidget {
         Container(
           height: 6,
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.15),
+            color: Colors.grey.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(3),
           ),
           child: FractionallySizedBox(

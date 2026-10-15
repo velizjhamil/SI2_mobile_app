@@ -10,6 +10,7 @@ class AssetCard extends StatelessWidget {
   final String portfolioShare;
   final IconData icon;
   final bool isHighlighted;
+  final VoidCallback? onTap;
 
   const AssetCard({
     super.key,
@@ -20,16 +21,17 @@ class AssetCard extends StatelessWidget {
     required this.portfolioShare,
     required this.icon,
     this.isHighlighted = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final bgColor = isHighlighted ? AppColors.softGreen : AppColors.surfaceContainerLow;
     final textColor = isHighlighted ? AppColors.graphite : AppColors.onSurface;
-    final subtextColor = isHighlighted ? AppColors.graphite.withOpacity(0.7) : AppColors.onSurfaceVariant;
+    final subtextColor = isHighlighted ? AppColors.graphite.withValues(alpha: 0.7) : AppColors.onSurfaceVariant;
     final isPos = percentageChange.startsWith('+');
 
-    return Container(
+    final card = Container(
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(16),
@@ -51,7 +53,7 @@ class AssetCard extends StatelessWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: isHighlighted ? AppColors.forestGreen : AppColors.primaryContainer.withOpacity(0.2),
+                        color: isHighlighted ? AppColors.forestGreen : AppColors.primaryContainer.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -92,7 +94,7 @@ class AssetCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isPos ? AppColors.primaryContainer.withOpacity(0.2) : Colors.pink.withOpacity(0.2),
+                  color: isPos ? AppColors.primaryContainer.withValues(alpha: 0.2) : Colors.pink.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -135,7 +137,7 @@ class AssetCard extends StatelessWidget {
                 width: 60,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: textColor.withOpacity(0.15),
+                  color: textColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(2),
                 ),
                 child: FractionallySizedBox(
@@ -153,6 +155,13 @@ class AssetCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    if (onTap == null) return card;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: card,
     );
   }
 }

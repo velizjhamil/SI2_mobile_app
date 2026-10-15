@@ -5,6 +5,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 import '../models/cuenta_ahorro_model.dart';
 import '../services/cuentas_service.dart';
+import 'saldos_extractos_screen.dart';
 
 /// Estructura de Portafolio con saldos reales del backend.
 ///
@@ -199,8 +200,8 @@ class _PortfolioBody extends StatelessWidget {
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? Colors.white.withOpacity(0.03)
-                              : Colors.black.withOpacity(0.03),
+                              ? Colors.white.withValues(alpha: 0.03)
+                              : Colors.black.withValues(alpha: 0.03),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Column(
@@ -233,8 +234,8 @@ class _PortfolioBody extends StatelessWidget {
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? Colors.white.withOpacity(0.03)
-                              : Colors.black.withOpacity(0.03),
+                              ? Colors.white.withValues(alpha: 0.03)
+                              : Colors.black.withValues(alpha: 0.03),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Column(
@@ -285,7 +286,7 @@ class _PortfolioBody extends StatelessWidget {
                 Container(
                   height: 10,
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.15),
+                    color: Colors.grey.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: Row(
@@ -411,85 +412,95 @@ Widget _buildCuentaCard({
       isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
   final accentColor = isDark ? AppColors.primary : AppColors.forestGreen;
 
-  return Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: cardBg,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: borderColor),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.forestGreen.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(Icons.account_balance, color: accentColor, size: 18),
+  return InkWell(
+    onTap: () {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SaldosExtractosScreen(initialAccountId: cuenta.id),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      cuenta.productType,
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: textColor),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: AppColors.forestGreen.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(cuenta.currency.currencyCode,
+      );
+    },
+    borderRadius: BorderRadius.circular(14),
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.forestGreen.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.account_balance, color: accentColor, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        cuenta.productType,
                         style: TextStyle(
-                            fontSize: 9,
-                            color: accentColor,
-                            fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: textColor),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppColors.forestGreen.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(cuenta.currency.currencyCode,
+                          style: TextStyle(
+                              fontSize: 9,
+                              color: accentColor,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                Text(
+                  'N.º ${cuenta.accountNumber} • ${cuenta.status}',
+                  style: TextStyle(fontSize: 11, color: subtextColor),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(cuenta.formattedAvailable,
+                  style: GoogleFonts.manrope(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: textColor)),
               Text(
-                'N.º ${cuenta.accountNumber} • ${cuenta.status}',
-                style: TextStyle(fontSize: 11, color: subtextColor),
-                overflow: TextOverflow.ellipsis,
+                '$sharePct del total',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: accentColor,
+                ),
               ),
             ],
           ),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(cuenta.formattedAvailable,
-                style: GoogleFonts.manrope(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: textColor)),
-            Text(
-              '$sharePct del total',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: accentColor,
-              ),
-            ),
-          ],
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }

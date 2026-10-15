@@ -233,6 +233,44 @@ class SocioService {
         : const []);
   }
 
+  Future<SocioResult<SocioPerfil>> perfil({http.Client? client}) async {
+    return _get('/socio/perfil', null, SocioPerfil.fromJson, client);
+  }
+
+  Future<SocioResult<SocioPerfil>> updatePerfil({
+    String? direccion,
+    String? telefono,
+    String? correo,
+    http.Client? client,
+  }) async {
+    final body = <String, dynamic>{
+      if (direccion != null) 'direccion': direccion,
+      if (telefono != null) 'telefono': telefono,
+      if (correo != null) 'correo': correo,
+    };
+    final res =
+        await _request('PATCH', '/socio/perfil', body: body, client: client);
+    if (!res.success) return SocioResult.failure(res.error);
+    return SocioResult.success(SocioPerfil.fromJson(res.value!));
+  }
+
+  Future<SocioResult<Map<String, dynamic>>> deposit({
+    required int accountId,
+    required double amount,
+    String? concept,
+    http.Client? client,
+  }) async {
+    return _request(
+      'POST',
+      '/socio/cuentas/$accountId/depositos',
+      body: {
+        'monto': amount,
+        if (concept != null) 'concepto': concept,
+      },
+      client: client,
+    );
+  }
+
   Future<SocioResult<Map<String, dynamic>>> _request(
     String method,
     String path, {
@@ -254,13 +292,20 @@ class SocioService {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       };
-      final response = method == 'GET'
-          ? await httpClient
-              .get(url, headers: headers)
-              .timeout(const Duration(seconds: 10))
-          : await httpClient
-              .post(url, headers: headers, body: jsonEncode(body ?? {}))
-              .timeout(const Duration(seconds: 10));
+      final http.Response response;
+      if (method == 'GET') {
+        response = await httpClient
+            .get(url, headers: headers)
+            .timeout(const Duration(seconds: 10));
+      } else if (method == 'PATCH') {
+        response = await httpClient
+            .patch(url, headers: headers, body: jsonEncode(body ?? {}))
+            .timeout(const Duration(seconds: 10));
+      } else {
+        response = await httpClient
+            .post(url, headers: headers, body: jsonEncode(body ?? {}))
+            .timeout(const Duration(seconds: 10));
+      }
       final decoded = _decode(response.body);
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (decoded is List) return SocioResult.success({'_list': decoded});

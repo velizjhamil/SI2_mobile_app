@@ -6,9 +6,14 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 import '../services/mock_auth_service.dart';
 
+import '../models/socio_model.dart';
+import '../services/notification_service.dart';
+import '../services/socio_service.dart';
+
 class SocioProfileScreen extends StatefulWidget {
   final AuthService? authService;
-  const SocioProfileScreen({super.key, this.authService});
+  final SocioService? socioService;
+  const SocioProfileScreen({super.key, this.authService, this.socioService});
 
   @override
   State<SocioProfileScreen> createState() => _SocioProfileScreenState();
@@ -17,20 +22,40 @@ class SocioProfileScreen extends StatefulWidget {
 class _SocioProfileScreenState extends State<SocioProfileScreen> {
   bool _twoFactorEnabled = true;
   bool _biometricsEnabled = true;
-  bool _notificationsEnabled = true;
   bool _copied = false;
   late final AuthService _authService;
+  late final SocioService _socioService;
 
-  // Datos del Socio (idealmente obtenidos desde un AuthProvider / UserState)
-  final String _nombreSocio = 'Juan Carlos Pérez';
-  final String _tipoSocio = 'Socio Platinum - Ahorrista';
-  final String _codigoSocio = 'SOC-884920-BO';
+  SocioPerfil? _perfil;
+  bool _loadingPerfil = true;
+  String? _perfilError;
 
   @override
   void initState() {
     super.initState();
     _authService = widget.authService ?? AuthService();
+    _socioService = widget.socioService ?? SocioService();
     _loadBiometricPreference();
+    _loadPerfil();
+  }
+
+  Future<void> _loadPerfil() async {
+    setState(() {
+      _loadingPerfil = true;
+      _perfilError = null;
+    });
+
+    final res = await _socioService.perfil();
+    if (!mounted) return;
+
+    setState(() {
+      _loadingPerfil = false;
+      if (res.success) {
+        _perfil = res.value;
+      } else {
+        _perfilError = res.error;
+      }
+    });
   }
 
   Future<void> _loadBiometricPreference() async {
@@ -98,12 +123,13 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
   }
 
   void _copySocioId() {
-    Clipboard.setData(ClipboardData(text: _codigoSocio));
+    final codigo = _perfil?.codigoSocio ?? 'SOC-000000-BO';
+    Clipboard.setData(ClipboardData(text: codigo));
     setState(() => _copied = true);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Código de socio $_codigoSocio copiado'),
+        content: Text('Código de socio $codigo copiado al portapapeles'),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
       ),
@@ -112,6 +138,219 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) setState(() => _copied = false);
     });
+  }
+
+  void _showDatosPersonalesModal() {
+    if (_perfil == null) return;
+    final telController = TextEditingController(text: _perfil!.telefono);
+    final dirController = TextEditingController(text: _perfil!.direccion);
+    final emailController = TextEditingController(text: _perfil!.correo);
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final sheetBg = isDark ? const Color(0xFF1E2420) : Colors.white;
+          final textColor = isDark ? Colors.white : const Color(0xFF101412);
+          final subtextColor = isDark ? Colors.white60 : Colors.black54;
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: sheetBg,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Datos Personales',
+                          style: GoogleFonts.manrope(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Campos de sólo lectura (KYC)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildReadOnlyField(
+                              'Nombre Completo:', _perfil!.nombreCompleto, textColor),
+                          const SizedBox(height: 6),
+                          _buildReadOnlyField(
+                              'Documento de Identidad (CI):', _perfil!.ci, textColor),
+                          const SizedBox(height: 6),
+                          _buildReadOnlyField('Código de Socio:',
+                              _perfil!.codigoSocio, AppColors.forestGreen),
+                          const SizedBox(height: 6),
+                          _buildReadOnlyField(
+                              'Estado:', _perfil!.estado, Colors.green),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'DATOS DE CONTACTO ACTUALIZABLES',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                        color: subtextColor,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Correo Electrónico',
+                        prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: telController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Teléfono / Celular',
+                        prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: dirController,
+                      decoration: InputDecoration(
+                        labelText: 'Dirección de Domicilio',
+                        prefixIcon:
+                            const Icon(Icons.location_on_outlined, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.forestGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                setModalState(() => isSaving = true);
+                                final updateRes =
+                                    await _socioService.updatePerfil(
+                                  correo: emailController.text.trim(),
+                                  telefono: telController.text.trim(),
+                                  direccion: dirController.text.trim(),
+                                );
+
+                                if (!ctx.mounted) return;
+
+                                if (updateRes.success) {
+                                  setState(() {
+                                    _perfil = updateRes.value;
+                                  });
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Datos personales actualizados con éxito.'),
+                                      backgroundColor: AppColors.forestGreen,
+                                    ),
+                                  );
+                                } else {
+                                  setModalState(() => isSaving = false);
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(
+                                      content: Text(updateRes.error ??
+                                          'No se pudo actualizar.'),
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                }
+                              },
+                        child: isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'GUARDAR CAMBIOS',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyField(String label, String value, Color valColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.bold, color: valColor)),
+      ],
+    );
   }
 
   @override
@@ -152,13 +391,18 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                       height: 64,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: accentColor.withOpacity(0.15),
+                        color: accentColor.withValues(alpha: 0.15),
                         border: Border.all(
-                            color: accentColor.withOpacity(0.5), width: 2),
+                            color: accentColor.withValues(alpha: 0.5), width: 2),
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        _nombreSocio.split(' ').map((e) => e[0]).take(2).join(),
+                        (_perfil?.nombreCompleto ?? 'Socio')
+                            .split(' ')
+                            .where((e) => e.isNotEmpty)
+                            .map((e) => e[0])
+                            .take(2)
+                            .join(),
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
@@ -171,25 +415,51 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _nombreSocio,
+                            _perfil?.nombreCompleto ??
+                                (_loadingPerfil
+                                    ? 'Cargando perfil...'
+                                    : (_perfilError ?? 'Socio')),
                             style: GoogleFonts.manrope(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
                               color: textColor,
                             ),
                           ),
+                          if (_perfilError != null) ...[
+                            const SizedBox(height: 2),
+                            GestureDetector(
+                              onTap: _loadPerfil,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.refresh,
+                                      size: 12, color: Colors.redAccent),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      _perfilError!,
+                                      style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.redAccent),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 2),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.15),
+                              color: accentColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                  color: accentColor.withOpacity(0.3)),
+                                  color: accentColor.withValues(alpha: 0.3)),
                             ),
                             child: Text(
-                              _tipoSocio,
+                              _perfil?.categoria ?? 'Socio Ahorrista',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -203,7 +473,7 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                             child: Row(
                               children: [
                                 Text(
-                                  'Código: $_codigoSocio',
+                                  'Código: ${_perfil?.codigoSocio ?? 'SOC-000000-BO'}',
                                   style: TextStyle(
                                       fontSize: 11,
                                       color: subtextColor,
@@ -244,7 +514,7 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: AppColors.forestGreen.withOpacity(0.15),
+                        color: AppColors.forestGreen.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
@@ -323,7 +593,7 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                       subtitle: Text('Usa Huella o FaceID para iniciar sesión',
                           style: TextStyle(fontSize: 11, color: subtextColor)),
                       value: _biometricsEnabled,
-                      activeColor: AppColors.forestGreen,
+                      activeThumbColor: AppColors.forestGreen,
                       onChanged: _toggleBiometrics,
                     ),
                     Divider(height: 1, color: borderColor),
@@ -339,7 +609,7 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                       subtitle: Text('Confirmación de operaciones vía SMS/OTP',
                           style: TextStyle(fontSize: 11, color: subtextColor)),
                       value: _twoFactorEnabled,
-                      activeColor: AppColors.forestGreen,
+                      activeThumbColor: AppColors.forestGreen,
                       onChanged: (val) =>
                           setState(() => _twoFactorEnabled = val),
                     ),
@@ -371,24 +641,32 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                           style: TextStyle(fontSize: 11, color: subtextColor)),
                       trailing: Icon(Icons.chevron_right,
                           size: 18, color: subtextColor),
-                      onTap: () {},
+                      onTap: _showDatosPersonalesModal,
                     ),
                     Divider(height: 1, color: borderColor),
-                    SwitchListTile(
-                      secondary: _buildIconContainer(
-                          icon: Icons.notifications_none_outlined,
-                          accentColor: accentColor),
-                      title: Text('Notificaciones de Movimientos',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: textColor)),
-                      subtitle: Text('Alertas sobre transferencias y pagos',
-                          style: TextStyle(fontSize: 11, color: subtextColor)),
-                      value: _notificationsEnabled,
-                      activeColor: AppColors.forestGreen,
-                      onChanged: (val) =>
-                          setState(() => _notificationsEnabled = val),
+                    Builder(
+                      builder: (context) {
+                        NotificationProvider? notif;
+                        try {
+                          notif = Provider.of<NotificationProvider>(context);
+                        } catch (_) {}
+                        final isEnabled = notif?.notificationsEnabled ?? true;
+                        return SwitchListTile(
+                          secondary: _buildIconContainer(
+                              icon: Icons.notifications_none_outlined,
+                              accentColor: accentColor),
+                          title: Text('Notificaciones de Movimientos',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: textColor)),
+                          subtitle: Text('Alertas sobre transferencias y pagos',
+                              style: TextStyle(fontSize: 11, color: subtextColor)),
+                          value: isEnabled,
+                          activeThumbColor: AppColors.forestGreen,
+                          onChanged: (val) => notif?.setNotificationsEnabled(val),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -412,8 +690,8 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                         letterSpacing: 0.8),
                   ),
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.redAccent.withOpacity(0.08),
-                    side: BorderSide(color: Colors.redAccent.withOpacity(0.3)),
+                    backgroundColor: Colors.redAccent.withValues(alpha: 0.08),
+                    side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.3)),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
@@ -447,7 +725,7 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: AppColors.forestGreen.withOpacity(0.15),
+        color: AppColors.forestGreen.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Icon(icon, color: accentColor, size: 18),
