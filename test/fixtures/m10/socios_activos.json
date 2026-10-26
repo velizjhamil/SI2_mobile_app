@@ -1,0 +1,122 @@
+{
+ "status": 200,
+ "body": [
+  {
+   "id": 4,
+   "uuid": "c1c0dab6-3b01-481a-bd38-a3200bab1d68",
+   "cooperativa_id": 1,
+   "ci": "5559876",
+   "nombre": "Mateo",
+   "apellido": "Terceros",
+   "direccion": null,
+   "telefono": null,
+   "correo": "socio2@test.com",
+   "estado": "ACTIVO",
+   "fecha_registro": "2026-10-18"
+  },
+  {
+   "id": 3,
+   "uuid": "402595db-de54-4ee3-850a-972bb3a2f213",
+   "cooperativa_id": 1,
+   "ci": "5551234",
+   "nombre": "Sofia",
+   "apellido": "Socia",
+   "direccion": null,
+   "telefono": null,
+   "correo": "socio@test.com",
+   "estado": "ACTIVO",
+   "fecha_registro": "2026-10-18"
+  },
+  {
+   "id": 11,
+   "uuid": "3473469c-d23f-4413-aed9-1a2a5a308446",
+   "cooperativa_id": 1,
+   "ci": "8877007 LP",
+   "nombre": "Carla",
+   "apellido": "Mendoza",
+   "direccion": "Santa Cruz, Bolivia",
+   "telefono": "70000000",
+   "correo": null,
+   "estado": "ACTIVO",
+   "fecha_registro": "2026-10-08"
+  },
+  {
+   "id": 10,
+   "uuid": "914a80f1-34e9-4beb-8f8a-eef1242537a3",
+   "cooperativa_id": 1,
+   "ci": "8877006 SC",
+   "nombre": "Jorge",
+   "apellido": "Salvatierra",
+   "direccion": "Santa Cruz, Bolivia",
+   "telefono": "70000000",
+   "correo": null,
+   "estado": "ACTIVO",
+   "fecha_registro": "2026-10-08"
+  },
+  {
+   "id": 9,
+   "uuid": "c07ec79c-09bb-421e-941b-1a5b3708ebb2",
+   "cooperativa_id": 1,
+   "ci": "8877005 CB",
+   "nombre": "Lucía",
+   "apellido": "Choque",
+   "direccion": "Santa Cruz, Bolivia",
+   "telefono": "70000000",
+   "correo": null,
+   "estado": "ACTIVO",
+   "fecha_registro": "2026-10-08"
+  },
+  {
+   "id": 8,
+   "uuid": "6517e53b-5405-43bd-99ba-bca2193cbc38",
+   "cooperativa_id": 1,
+   "ci": "8877004 SC",
+   "nombre": "Diego",
+   "apellido": "Vargas",
+   "direccion": "Santa Cruz, Bolivia",
+   "telefono": "70000000",
+   "correo": null,
+   "estado": "ACTIVO",
+   "fecha_registro": "2026-10-08"
+  },
+  {
+   "id": 7,
+   "uuid": "40246442-33f7-491e-8d6f-708a06ac2d03",
+   "cooperativa_id": 1,
+   "ci": "8877003 LP",
+   "nombre": "Ana",
+   "apellido": "Quiroga",
+   "direccion": "Santa Cruz, Bolivia",
+   "telefono": "70000000",
+   "correo": null,
+   "estado": "ACTIVO",
+   "fecha_registro": "2026-10-08"
+  },
+  {
+   "id": 6,
+   "uuid": "bb106c07-1b2d-457f-972d-79e7d9598bee",
+   "cooperativa_id": 1,
+   "ci": "8877002 SC",
+   "nombre": "Marco",
+   "apellido": "Rojas",
+   "direccion": "Santa Cruz, Bolivia",
+   "telefono": "70000000",
+   "correo": "demo.socio2@si2.test",
+   "estado": "ACTIVO",
+   "fecha_registro": "2026-10-08"
+  },
+  {
+   "id": 5,
+   "uuid": "e414bfd0-391d-4e66-80e0-040e20cddb22",
+   "cooperativa_id": 1,
+   "ci": "8877001 SC",
+   "nombre": "Elena",
+   "apellido": "Flores",
+   "direccion": "Santa Cruz, Bolivia",
+   "telefono": "70000000",
+   "correo": "demo.socia1@si2.test",
+   "estado": "ACTIVO",
+   "fecha_registro": "2026-10-08"
+  }
+ ]
+}

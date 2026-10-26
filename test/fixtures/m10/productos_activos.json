@@ -1,0 +1,92 @@
+{
+ "status": 200,
+ "body": [
+  {
+   "id": 2,
+   "codigo": "CONS-BOB",
+   "nombre": "Crédito de Consumo",
+   "descripcion": "Financiamiento de consumo en bolivianos",
+   "moneda": {
+    "id": 1,
+    "codigo_iso": "BOB",
+    "nombre": "Boliviano",
+    "simbolo": "Bs."
+   },
+   "monto_min": "1000.00",
+   "monto_max": "50000.00",
+   "plazo_min_meses": 6,
+   "plazo_max_meses": 48,
+   "tasa_interes_anual": "18.00",
+   "tipo_amortizacion": "FRANCES",
+   "dias_gracia_mora": 3,
+   "tasa_mora_anual": "3.00",
+   "relacion_cuota_ingreso_max": "40.00",
+   "requiere_garantia": false,
+   "tipo_credito_asfi": "CONSUMO",
+   "sector_productivo": false,
+   "cobertura_minima_garantia": "0.00",
+   "monto_aprobacion_directa": "20000.00",
+   "estado": "ACTIVO",
+   "fecha_creacion": "2026-10-18T20:37:06.918606Z",
+   "fecha_actualizacion": "2026-10-18T20:37:06.918606Z"
+  },
+  {
+   "id": 1,
+   "codigo": "MICRO-BOB",
+   "nombre": "Microcrédito Productivo",
+   "descripcion": "Capital para actividades productivas en bolivianos",
+   "moneda": {
+    "id": 1,
+    "codigo_iso": "BOB",
+    "nombre": "Boliviano",
+    "simbolo": "Bs."
+   },
+   "monto_min": "2000.00",
+   "monto_max": "100000.00",
+   "plazo_min_meses": 6,
+   "plazo_max_meses": 60,
+   "tasa_interes_anual": "15.00",
+   "tipo_amortizacion": "FRANCES",
+   "dias_gracia_mora": 5,
+   "tasa_mora_anual": "3.00",
+   "relacion_cuota_ingreso_max": "45.00",
+   "requiere_garantia": true,
+   "tipo_credito_asfi": "MICROCREDITO",
+   "sector_productivo": true,
+   "cobertura_minima_garantia": "100.00",
+   "monto_aprobacion_directa": "30000.00",
+   "estado": "ACTIVO",
+   "fecha_creacion": "2026-10-18T20:37:06.918606Z",
+   "fecha_actualizacion": "2026-10-18T20:37:06.918606Z"
+  },
+  {
+   "id": 3,
+   "codigo": "VIV-USD",
+   "nombre": "Crédito de Vivienda",
+   "descripcion": "Financiamiento de vivienda en dólares estadounidenses",
+   "moneda": {
+    "id": 2,
+    "codigo_iso": "USD",
+    "nombre": "Dólar Estadounidense",
+    "simbolo": "$"
+   },
+   "monto_min": "10000.00",
+   "monto_max": "150000.00",
+   "plazo_min_meses": 60,
+   "plazo_max_meses": 240,
+   "tasa_interes_anual": "8.50",
+   "tipo_amortizacion": "ALEMAN",
+   "dias_gracia_mora": 5,
+   "tasa_mora_anual": "2.00",
+   "relacion_cuota_ingreso_max": "35.00",
+   "requiere_garantia": true,
+   "tipo_credito_asfi": "VIVIENDA_HIPOTECARIA",
+   "sector_productivo": false,
+   "cobertura_minima_garantia": "125.00",
+   "monto_aprobacion_directa": "0.00",
+   "estado": "ACTIVO",
+   "fecha_creacion": "2026-10-18T20:37:06.918606Z",
+   "fecha_actualizacion": "2026-10-18T20:37:06.918606Z"
+  }
+ ]
+}

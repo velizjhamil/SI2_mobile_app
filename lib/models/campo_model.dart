@@ -404,3 +404,228 @@ class ScoringResultado {
         relacionCuotaIngreso: json['relacion_cuota_ingreso']?.toString(),
       );
 }
+
+class ScoringKnockout {
+  final String codigo;
+  final String descripcion;
+  final String efecto;
+
+  const ScoringKnockout({
+    required this.codigo,
+    required this.descripcion,
+    required this.efecto,
+  });
+
+  factory ScoringKnockout.fromJson(Map<String, dynamic> json) =>
+      ScoringKnockout(
+        codigo: _string(json['codigo']),
+        descripcion: _string(json['descripcion']),
+        efecto: _string(json['efecto']),
+      );
+}
+
+class SocioPrecalificacion {
+  final int id;
+  final String ci;
+  final String nombre;
+  final String apellido;
+
+  const SocioPrecalificacion({
+    required this.id,
+    required this.ci,
+    required this.nombre,
+    required this.apellido,
+  });
+
+  String get nombreCompleto => '$nombre $apellido'.trim();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SocioPrecalificacion &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+
+  factory SocioPrecalificacion.fromJson(Map<String, dynamic> json) =>
+      SocioPrecalificacion(
+        id: _int(json['id']),
+        ci: _string(json['ci']),
+        nombre: _string(json['nombre']),
+        apellido: _string(json['apellido']),
+      );
+}
+
+class ProductoPrecalificacion {
+  final int id;
+  final String codigo;
+  final String nombre;
+  final String? monedaSimbolo;
+  final String montoMin;
+  final String montoMax;
+  final int plazoMinMeses;
+  final int plazoMaxMeses;
+  final String tasaInteresAnual;
+  final bool requiereGarantia;
+
+  const ProductoPrecalificacion({
+    required this.id,
+    required this.codigo,
+    required this.nombre,
+    this.monedaSimbolo,
+    required this.montoMin,
+    required this.montoMax,
+    required this.plazoMinMeses,
+    required this.plazoMaxMeses,
+    required this.tasaInteresAnual,
+    required this.requiereGarantia,
+  });
+
+  double get montoMinDouble => double.tryParse(montoMin) ?? 0.0;
+  double get montoMaxDouble => double.tryParse(montoMax) ?? 0.0;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ProductoPrecalificacion &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+
+  factory ProductoPrecalificacion.fromJson(Map<String, dynamic> json) {
+    final monMap = json['moneda'] is Map ? json['moneda'] as Map : null;
+    final simbolo =
+        monMap != null ? monMap['simbolo']?.toString() : json['moneda']?.toString();
+    return ProductoPrecalificacion(
+      id: _int(json['id']),
+      codigo: _string(json['codigo']),
+      nombre: _string(json['nombre']),
+      monedaSimbolo: simbolo ?? 'Bs.',
+      montoMin: _string(json['monto_min']),
+      montoMax: _string(json['monto_max']),
+      plazoMinMeses: _int(json['plazo_min_meses']),
+      plazoMaxMeses: _int(json['plazo_max_meses']),
+      tasaInteresAnual: _string(json['tasa_interes_anual']),
+      requiereGarantia: json['requiere_garantia'] == true,
+    );
+  }
+}
+
+class PrecalificacionForm {
+  final int socioId;
+  final int productoId;
+  final String monto;
+  final int plazoMeses;
+  final String ingresoMensual;
+  final String egresoMensual;
+  final String cuotaDeudasMensual;
+  final int antiguedadLaboralMeses;
+  final String? calificacionAsfi;
+  final String? fuenteIngresos;
+
+  const PrecalificacionForm({
+    required this.socioId,
+    required this.productoId,
+    required this.monto,
+    required this.plazoMeses,
+    required this.ingresoMensual,
+    required this.egresoMensual,
+    required this.cuotaDeudasMensual,
+    required this.antiguedadLaboralMeses,
+    this.calificacionAsfi,
+    this.fuenteIngresos,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'socio_id': socioId,
+        'producto_id': productoId,
+        'monto': monto,
+        'plazo_meses': plazoMeses,
+        'ingreso_mensual': ingresoMensual,
+        'egreso_mensual': egresoMensual,
+        'cuota_deudas_mensual': cuotaDeudasMensual,
+        'antiguedad_laboral_meses': antiguedadLaboralMeses,
+        if (calificacionAsfi != null && calificacionAsfi!.trim().isNotEmpty)
+          'calificacion_asfi': calificacionAsfi!.trim(),
+        if (fuenteIngresos != null && fuenteIngresos!.trim().isNotEmpty)
+          'fuente_ingresos': fuenteIngresos!.trim(),
+      };
+}
+
+class PrecalificacionResultado {
+  final bool precalificacion;
+  final int score;
+  final String dictamen;
+  final List<ScoringFactor> factores;
+  final List<ScoringKnockout> knockouts;
+  final String? explicacion;
+  final String? cuotaEstimada;
+  final String? relacionCuotaIngreso;
+  final String? probabilidadMora;
+  final String? nivelRiesgo;
+  final String? versionModelo;
+  final int? socioId;
+  final String? socioNombre;
+  final String? socioCi;
+  final int? productoId;
+  final String? productoNombre;
+
+  const PrecalificacionResultado({
+    required this.precalificacion,
+    required this.score,
+    required this.dictamen,
+    required this.factores,
+    this.knockouts = const [],
+    this.explicacion,
+    this.cuotaEstimada,
+    this.relacionCuotaIngreso,
+    this.probabilidadMora,
+    this.nivelRiesgo,
+    this.versionModelo,
+    this.socioId,
+    this.socioNombre,
+    this.socioCi,
+    this.productoId,
+    this.productoNombre,
+  });
+
+  bool get isAprobado => dictamen.toUpperCase() == 'APROBADO';
+  bool get isRechazado => dictamen.toUpperCase() == 'RECHAZADO';
+  bool get isRevisionManual =>
+      dictamen.toUpperCase() == 'REVISION_MANUAL' ||
+      dictamen.toUpperCase() == 'OBSERVADO';
+
+  factory PrecalificacionResultado.fromJson(Map<String, dynamic> json) {
+    final socioMap = json['socio'] as Map? ?? {};
+    final prodMap = json['producto'] as Map? ?? {};
+
+    return PrecalificacionResultado(
+      precalificacion: json['precalificacion'] == true,
+      score: _int(json['score']),
+      dictamen: _string(json['dictamen']),
+      factores: (json['factores'] as List? ?? [])
+          .whereType<Map>()
+          .map((e) => ScoringFactor.fromJson(e.cast<String, dynamic>()))
+          .toList(),
+      knockouts: (json['knockouts'] as List? ?? [])
+          .whereType<Map>()
+          .map((e) => ScoringKnockout.fromJson(e.cast<String, dynamic>()))
+          .toList(),
+      explicacion: json['explicacion']?.toString(),
+      cuotaEstimada: json['cuota_estimada']?.toString(),
+      relacionCuotaIngreso: json['relacion_cuota_ingreso']?.toString(),
+      probabilidadMora: json['probabilidad_mora']?.toString(),
+      nivelRiesgo: json['nivel_riesgo']?.toString(),
+      versionModelo: json['version_modelo']?.toString(),
+      socioId: socioMap['id'] != null ? _int(socioMap['id']) : null,
+      socioNombre: socioMap['nombre_completo']?.toString(),
+      socioCi: socioMap['ci']?.toString(),
+      productoId: prodMap['id'] != null ? _int(prodMap['id']) : null,
+      productoNombre: prodMap['nombre']?.toString(),
+    );
+  }
+}

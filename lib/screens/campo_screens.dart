@@ -95,6 +95,19 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
         ),
         actions: [
           IconButton(
+            key: const Key('campo_precalificar_nav_btn'),
+            tooltip: 'Precalificar',
+            icon: const Icon(Icons.calculate_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PrecalificacionScreen(service: _service),
+                ),
+              );
+            },
+          ),
+          IconButton(
             key: const Key('campo_logout_btn'),
             tooltip: 'Cerrar sesión',
             icon: const Icon(Icons.logout),
@@ -332,6 +345,19 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
             ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('campo_precalificar_fab'),
+        icon: const Icon(Icons.calculate_outlined),
+        label: const Text('Precalificar'),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PrecalificacionScreen(service: _service),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1504,6 +1530,1188 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class PrecalificacionScreen extends StatefulWidget {
+  final CampoService? service;
+
+  const PrecalificacionScreen({super.key, this.service});
+
+  @override
+  State<PrecalificacionScreen> createState() => _PrecalificacionScreenState();
+}
+
+class _PrecalificacionScreenState extends State<PrecalificacionScreen> {
+  late final CampoService _service = widget.service ?? CampoService();
+
+  bool _loadingData = true;
+  String? _initError;
+  bool _submitting = false;
+  String? _backendError;
+
+  List<SocioPrecalificacion> _socios = [];
+  List<ProductoPrecalificacion> _productos = [];
+
+  SocioPrecalificacion? _selectedSocio;
+  ProductoPrecalificacion? _selectedProducto;
+
+  final _montoCtrl = TextEditingController();
+  final _plazoCtrl = TextEditingController();
+  final _ingresoCtrl = TextEditingController();
+  final _egresoCtrl = TextEditingController();
+  final _deudasCtrl = TextEditingController(text: '0.00');
+  final _antiguedadCtrl = TextEditingController();
+
+  String? _calificacionAsfi;
+  String? _fuenteIngresos;
+
+  String? _socioError;
+  String? _montoError;
+  String? _plazoError;
+  String? _ingresoError;
+  String? _egresoError;
+  String? _deudasError;
+  String? _antiguedadError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    _montoCtrl.dispose();
+    _plazoCtrl.dispose();
+    _ingresoCtrl.dispose();
+    _egresoCtrl.dispose();
+    _deudasCtrl.dispose();
+    _antiguedadCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadInitialData() async {
+    setState(() {
+      _loadingData = true;
+      _initError = null;
+    });
+
+    try {
+      final results = await Future.wait([
+        _service.getSociosActivos(),
+        _service.getProductosActivos(),
+      ]);
+
+      final sociosRes = results[0] as CampoResult<List<SocioPrecalificacion>>;
+      final prodRes = results[1] as CampoResult<List<ProductoPrecalificacion>>;
+
+      if (!mounted) return;
+
+      if (!sociosRes.success) {
+        setState(() {
+          _loadingData = false;
+          _initError = sociosRes.error ?? 'Error al cargar socios activos';
+        });
+        return;
+      }
+
+      if (!prodRes.success) {
+        setState(() {
+          _loadingData = false;
+          _initError = prodRes.error ?? 'Error al cargar productos activos';
+        });
+        return;
+      }
+
+      setState(() {
+        _loadingData = false;
+        _socios = sociosRes.value ?? [];
+        _productos = prodRes.value ?? [];
+        if (_productos.isNotEmpty) {
+          _selectedProducto = _productos.first;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingData = false;
+        _initError = e.toString();
+      });
+    }
+  }
+
+  Future<void> _openSocioPicker() async {
+    final socio = await showDialog<SocioPrecalificacion>(
+      context: context,
+      builder: (ctx) {
+        String query = '';
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            final filtered = _socios.where((s) {
+              final q = query.trim().toLowerCase();
+              if (q.isEmpty) return true;
+              return s.ci.toLowerCase().contains(q) ||
+                  s.nombreCompleto.toLowerCase().contains(q);
+            }).toList();
+
+            return AlertDialog(
+              title: const Text('Buscar Socio Activo'),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 400,
+                child: Column(
+                  children: [
+                    TextField(
+                      key: const Key('precal_socio_search_field'),
+                      decoration: const InputDecoration(
+                        labelText: 'Buscar por CI o nombre',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      onChanged: (val) {
+                        setDialogState(() {
+                          query = val;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No se encontraron socios activos',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final s = filtered[index];
+                                return ListTile(
+                                  key: Key('precal_socio_tile_${s.id}'),
+                                  title: Text(
+                                    s.nombreCompleto,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text('CI: ${s.ci}'),
+                                  onTap: () {
+                                    Navigator.pop(ctx, s);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (socio != null) {
+      setState(() {
+        _selectedSocio = socio;
+        _socioError = null;
+      });
+    }
+  }
+
+  Future<void> _onSubmit() async {
+    final socioError =
+        _selectedSocio == null ? 'Debe seleccionar un socio' : null;
+
+    final prod = _selectedProducto;
+    String? montoError;
+    final montoVal = double.tryParse(_montoCtrl.text.trim());
+    if (montoVal == null) {
+      montoError = 'Ingrese un monto válido';
+    } else if (prod != null &&
+        (montoVal < prod.montoMinDouble || montoVal > prod.montoMaxDouble)) {
+      montoError =
+          'El monto debe estar entre ${prod.montoMin} y ${prod.montoMax} ${prod.monedaSimbolo ?? "Bs."}';
+    }
+
+    String? plazoError;
+    final plazoVal = int.tryParse(_plazoCtrl.text.trim());
+    if (plazoVal == null) {
+      plazoError = 'Ingrese un plazo válido';
+    } else if (prod != null &&
+        (plazoVal < prod.plazoMinMeses || plazoVal > prod.plazoMaxMeses)) {
+      plazoError =
+          'El plazo debe estar entre ${prod.plazoMinMeses} y ${prod.plazoMaxMeses} meses';
+    }
+
+    String? ingresoError;
+    final ingresoVal = double.tryParse(_ingresoCtrl.text.trim());
+    if (ingresoVal == null || ingresoVal <= 0) {
+      ingresoError = 'El ingreso debe ser mayor a 0';
+    }
+
+    String? egresoError;
+    final egresoVal = double.tryParse(_egresoCtrl.text.trim());
+    if (egresoVal == null || egresoVal < 0) {
+      egresoError = 'El egreso no puede ser negativo';
+    }
+
+    String? deudasError;
+    final deudasVal = double.tryParse(_deudasCtrl.text.trim());
+    if (deudasVal == null || deudasVal < 0) {
+      deudasError = 'Las deudas no pueden ser negativas';
+    }
+
+    String? antiguedadError;
+    final antiguedadVal = int.tryParse(_antiguedadCtrl.text.trim());
+    if (antiguedadVal == null || antiguedadVal < 0) {
+      antiguedadError = 'La antigüedad debe ser mayor o igual a 0';
+    }
+
+    setState(() {
+      _socioError = socioError;
+      _montoError = montoError;
+      _plazoError = plazoError;
+      _ingresoError = ingresoError;
+      _egresoError = egresoError;
+      _deudasError = deudasError;
+      _antiguedadError = antiguedadError;
+      _backendError = null;
+    });
+
+    if (socioError != null ||
+        montoError != null ||
+        plazoError != null ||
+        ingresoError != null ||
+        egresoError != null ||
+        deudasError != null ||
+        antiguedadError != null ||
+        prod == null) {
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+    });
+
+    final form = PrecalificacionForm(
+      socioId: _selectedSocio!.id,
+      productoId: prod.id,
+      monto: montoVal!.toStringAsFixed(2),
+      plazoMeses: plazoVal!,
+      ingresoMensual: ingresoVal!.toStringAsFixed(2),
+      egresoMensual: egresoVal!.toStringAsFixed(2),
+      cuotaDeudasMensual: (deudasVal ?? 0.0).toStringAsFixed(2),
+      antiguedadLaboralMeses: antiguedadVal!,
+      calificacionAsfi: _calificacionAsfi,
+      fuenteIngresos: _fuenteIngresos,
+    );
+
+    final result = await _service.precalificar(form);
+    if (!mounted) return;
+
+    setState(() {
+      _submitting = false;
+    });
+
+    if (!result.success || result.value == null) {
+      setState(() {
+        _backendError = result.error ?? 'Error al procesar la precalificación';
+      });
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PrecalificacionResultadoScreen(
+          resultado: result.value!,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Provider.of<ThemeProvider>(context).isDark;
+    final bgColor =
+        isDark ? AppColors.darkBackground : AppColors.lightBackground;
+    final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final textColor = isDark ? AppColors.darkText : AppColors.lightText;
+    final subtextColor =
+        isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final accentColor = isDark ? AppColors.primary : AppColors.forestGreen;
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: bgColor,
+        title: Text(
+          'Precalificación en Campo',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+      ),
+      body: _loadingData
+          ? const Center(child: CircularProgressIndicator())
+          : _initError != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline,
+                            size: 48, color: AppColors.error),
+                        const SizedBox(height: 12),
+                        Text(
+                          _initError!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadInitialData,
+                          child: const Text('Reintentar'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Socio Selector
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: _socioError != null
+                                ? AppColors.error
+                                : borderColor,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _selectedSocio == null
+                                  ? Icons.person_outline
+                                  : Icons.person,
+                              color: _selectedSocio == null
+                                  ? subtextColor
+                                  : accentColor,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Socio',
+                                    style: TextStyle(
+                                        fontSize: 12, color: subtextColor),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _selectedSocio?.nombreCompleto ??
+                                        'Ningún socio seleccionado',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: _selectedSocio != null
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      color: _selectedSocio != null
+                                          ? textColor
+                                          : subtextColor,
+                                    ),
+                                  ),
+                                  if (_selectedSocio != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'CI: ${_selectedSocio!.ci}',
+                                      style: TextStyle(
+                                          fontSize: 12, color: subtextColor),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            ElevatedButton(
+                              key: const Key('precal_seleccionar_socio_btn'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: accentColor,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: _openSocioPicker,
+                              child: Text(
+                                _selectedSocio == null
+                                    ? 'Seleccionar'
+                                    : 'Cambiar',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_socioError != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, left: 4),
+                          child: Text(
+                            _socioError!,
+                            style: const TextStyle(
+                                color: AppColors.error, fontSize: 12),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+
+                      // Producto Selector
+                      DropdownButtonFormField<ProductoPrecalificacion>(
+                        key: const Key('precal_producto_dropdown'),
+                        initialValue: _selectedProducto,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Producto de Crédito *',
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: cardBg,
+                        ),
+                        items: _productos.map((p) {
+                          final label =
+                              '${p.nombre} (${p.montoMin} - ${p.montoMax} ${p.monedaSimbolo} · ${p.plazoMinMeses}-${p.plazoMaxMeses} m)';
+                          return DropdownMenuItem<ProductoPrecalificacion>(
+                            value: p,
+                            child: Text(
+                              label,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedProducto = val;
+                            _montoError = null;
+                            _plazoError = null;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Monto
+                      TextFormField(
+                        key: const Key('precal_monto_field'),
+                        controller: _montoCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Monto solicitado *',
+                          hintText: 'Ej: 8000.00',
+                          prefixIcon: const Icon(Icons.attach_money),
+                          suffixText:
+                              _selectedProducto?.monedaSimbolo ?? 'Bs.',
+                          errorText: _montoError,
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: cardBg,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Plazo
+                      TextFormField(
+                        key: const Key('precal_plazo_field'),
+                        controller: _plazoCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Plazo en meses *',
+                          hintText: 'Ej: 24',
+                          prefixIcon: const Icon(Icons.calendar_month),
+                          suffixText: 'meses',
+                          errorText: _plazoError,
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: cardBg,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Ingreso
+                      TextFormField(
+                        key: const Key('precal_ingreso_field'),
+                        controller: _ingresoCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Ingreso mensual *',
+                          hintText: 'Ej: 6000.00',
+                          prefixIcon: const Icon(Icons.trending_up),
+                          suffixText:
+                              _selectedProducto?.monedaSimbolo ?? 'Bs.',
+                          errorText: _ingresoError,
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: cardBg,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Egreso
+                      TextFormField(
+                        key: const Key('precal_egreso_field'),
+                        controller: _egresoCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Egreso mensual *',
+                          hintText: 'Ej: 2000.00',
+                          prefixIcon: const Icon(Icons.trending_down),
+                          suffixText:
+                              _selectedProducto?.monedaSimbolo ?? 'Bs.',
+                          errorText: _egresoError,
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: cardBg,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Deudas
+                      TextFormField(
+                        key: const Key('precal_deudas_field'),
+                        controller: _deudasCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Cuota deudas mensual *',
+                          hintText: '0.00',
+                          prefixIcon: const Icon(Icons.credit_card),
+                          suffixText:
+                              _selectedProducto?.monedaSimbolo ?? 'Bs.',
+                          errorText: _deudasError,
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: cardBg,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Antigüedad
+                      TextFormField(
+                        key: const Key('precal_antiguedad_field'),
+                        controller: _antiguedadCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Antigüedad laboral (meses) *',
+                          hintText: 'Ej: 48',
+                          prefixIcon: const Icon(Icons.work_outline),
+                          suffixText: 'meses',
+                          errorText: _antiguedadError,
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: cardBg,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ASFI
+                      DropdownButtonFormField<String?>(
+                        key: const Key('precal_asfi_dropdown'),
+                        initialValue: _calificacionAsfi,
+                        decoration: InputDecoration(
+                          labelText: 'Calificación ASFI (opcional)',
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: cardBg,
+                        ),
+                        items: const [
+                          DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('Sin calificar'),
+                          ),
+                          DropdownMenuItem<String?>(
+                            value: 'A',
+                            child: Text('Categoría A'),
+                          ),
+                          DropdownMenuItem<String?>(
+                            value: 'B',
+                            child: Text('Categoría B'),
+                          ),
+                          DropdownMenuItem<String?>(
+                            value: 'C',
+                            child: Text('Categoría C'),
+                          ),
+                          DropdownMenuItem<String?>(
+                            value: 'D',
+                            child: Text('Categoría D'),
+                          ),
+                          DropdownMenuItem<String?>(
+                            value: 'E',
+                            child: Text('Categoría E'),
+                          ),
+                          DropdownMenuItem<String?>(
+                            value: 'F',
+                            child: Text('Categoría F'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          setState(() => _calificacionAsfi = val);
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Fuente
+                      DropdownButtonFormField<String?>(
+                        key: const Key('precal_fuente_dropdown'),
+                        initialValue: _fuenteIngresos,
+                        decoration: InputDecoration(
+                          labelText: 'Fuente de ingresos (opcional)',
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: cardBg,
+                        ),
+                        items: const [
+                          DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('Sin especificar'),
+                          ),
+                          DropdownMenuItem<String?>(
+                            value: 'DEPENDIENTE',
+                            child: Text('DEPENDIENTE'),
+                          ),
+                          DropdownMenuItem<String?>(
+                            value: 'INDEPENDIENTE',
+                            child: Text('INDEPENDIENTE'),
+                          ),
+                          DropdownMenuItem<String?>(
+                            value: 'MIXTO',
+                            child: Text('MIXTO'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          setState(() => _fuenteIngresos = val);
+                        },
+                      ),
+
+                      if (_backendError != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          key: const Key('precal_error_banner'),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.error.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  color: AppColors.error, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _backendError!,
+                                  style: const TextStyle(
+                                    color: AppColors.error,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+
+                      // Submit Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          key: const Key('precal_calcular_btn'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: accentColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: _submitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.bolt),
+                          label: Text(
+                            _submitting
+                                ? 'Calculando precalificación...'
+                                : 'Precalificar',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          onPressed: _submitting ? null : _onSubmit,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+    );
+  }
+}
+
+class PrecalificacionResultadoScreen extends StatelessWidget {
+  final PrecalificacionResultado resultado;
+
+  const PrecalificacionResultadoScreen({
+    super.key,
+    required this.resultado,
+  });
+
+  static Color _dictamenColor(String dictamen) {
+    switch (dictamen.toUpperCase()) {
+      case 'APROBADO':
+        return AppColors.forestGreen;
+      case 'RECHAZADO':
+        return AppColors.error;
+      case 'REVISION_MANUAL':
+      case 'OBSERVADO':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  static String _formatProbabilidad(String? raw) {
+    if (raw == null || raw.isEmpty) return '-';
+    final val = double.tryParse(raw);
+    if (val == null) return raw;
+    return '${(val * 100).toStringAsFixed(1)}%';
+  }
+
+  Widget _metricRow(String label, String value, {Key? key}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+          const SizedBox(width: 8),
+          Text(
+            value,
+            key: key,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Provider.of<ThemeProvider>(context).isDark;
+    final bgColor =
+        isDark ? AppColors.darkBackground : AppColors.lightBackground;
+    final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final textColor = isDark ? AppColors.darkText : AppColors.lightText;
+    final subtextColor =
+        isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final accentColor = isDark ? AppColors.primary : AppColors.forestGreen;
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: bgColor,
+        title: Text(
+          'Resultado de Precalificación',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Prominent banner: Precalificación — no es una solicitud
+            Container(
+              key: const Key('precal_banner_no_solicitud'),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.6)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.amber, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Precalificación — no es una solicitud',
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color:
+                                isDark ? Colors.amber[200] : Colors.amber[900],
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Este resultado es meramente informativo y preliminar. No constituye una solicitud formal ni representa un compromiso de crédito.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: subtextColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Dictamen and Score Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        key: const Key('precal_dictamen_badge'),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _dictamenColor(resultado.dictamen)
+                              .withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _dictamenColor(resultado.dictamen),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Text(
+                          resultado.dictamen,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: _dictamenColor(resultado.dictamen),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${resultado.score} / 1000 pts',
+                        key: const Key('precal_score_text'),
+                        style: GoogleFonts.manrope(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (resultado.socioNombre != null ||
+                      resultado.productoNombre != null) ...[
+                    const Divider(height: 24),
+                    if (resultado.socioNombre != null)
+                      _infoRow(
+                        'Socio:',
+                        '${resultado.socioNombre} (CI: ${resultado.socioCi ?? "-"})',
+                      ),
+                    if (resultado.productoNombre != null)
+                      _infoRow('Producto:', resultado.productoNombre!),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Metrics Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Métricas Estimadas',
+                    style: GoogleFonts.manrope(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: textColor,
+                    ),
+                  ),
+                  const Divider(height: 18),
+                  _metricRow(
+                    'Cuota estimada:',
+                    '${resultado.cuotaEstimada ?? "0.00"} BOB',
+                    key: const Key('precal_cuota_estimada_text'),
+                  ),
+                  if (resultado.relacionCuotaIngreso != null)
+                    _metricRow(
+                      'Relación cuota-ingreso:',
+                      '${resultado.relacionCuotaIngreso}%',
+                    ),
+                  _metricRow(
+                    'Nivel de riesgo:',
+                    resultado.nivelRiesgo ?? 'NO DETERMINADO',
+                    key: const Key('precal_nivel_riesgo_text'),
+                  ),
+                  _metricRow(
+                    'Probabilidad de mora:',
+                    _formatProbabilidad(resultado.probabilidadMora),
+                    key: const Key('precal_probabilidad_mora_text'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Knockouts Section FIRST (if present)
+            if (resultado.knockouts.isNotEmpty) ...[
+              Container(
+                key: const Key('precal_knockouts_section'),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            color: AppColors.error, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Reglas de Excepción (Knockouts)',
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: AppColors.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 18),
+                    ...resultado.knockouts.map((k) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.close,
+                                size: 16, color: AppColors.error),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${k.codigo} (${k.efecto})',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: AppColors.error,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    k.descripcion,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: subtextColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Factors Section
+            Container(
+              key: const Key('precal_factores_section'),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Factores de Decisión',
+                    style: GoogleFonts.manrope(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: textColor,
+                    ),
+                  ),
+                  const Divider(height: 18),
+                  if (resultado.factores.isEmpty)
+                    Text(
+                      'No hay factores registrados.',
+                      style: TextStyle(fontSize: 12, color: subtextColor),
+                    )
+                  else
+                    ...resultado.factores.map((f) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.check_circle_outline,
+                                size: 16, color: Colors.indigo),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    f.descripcion,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${f.puntos}/${f.maximo} pts · ${f.motivo}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: subtextColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+
+            if (resultado.explicacion != null &&
+                resultado.explicacion!.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Explicación:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      resultado.explicacion!,
+                      style: TextStyle(fontSize: 12, color: subtextColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Volver al formulario'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

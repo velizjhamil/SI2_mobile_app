@@ -1,0 +1,82 @@
+{
+ "status": 200,
+ "body": {
+  "precalificacion": true,
+  "score": 910,
+  "dictamen": "APROBADO",
+  "factores": [
+   {
+    "codigo": "CAPACIDAD_PAGO",
+    "descripcion": "Relación cuota-ingreso respecto al máximo del producto",
+    "puntos": 300,
+    "maximo": 300,
+    "valor": "6.66% de 40.00%",
+    "motivo": "La relación es igual o menor al 50% del máximo permitido."
+   },
+   {
+    "codigo": "CALIFICACION_ASFI",
+    "descripcion": "Calificación de riesgo ASFI",
+    "puntos": 200,
+    "maximo": 200,
+    "valor": "A",
+    "motivo": "La categoría A asigna 200 puntos."
+   },
+   {
+    "codigo": "ANTIGUEDAD_LABORAL",
+    "descripcion": "Antigüedad laboral declarada",
+    "puntos": 100,
+    "maximo": 100,
+    "valor": "48 meses",
+    "motivo": "La antigüedad laboral de 48 meses asigna 100 puntos."
+   },
+   {
+    "codigo": "ENDEUDAMIENTO",
+    "descripcion": "Cuota de deudas respecto al ingreso mensual",
+    "puntos": 100,
+    "maximo": 100,
+    "valor": "0.00%",
+    "motivo": "No se declararon cuotas de otras deudas."
+   },
+   {
+    "codigo": "ANTIGUEDAD_SOCIO",
+    "descripcion": "Antigüedad como socio de la cooperativa",
+    "puntos": 10,
+    "maximo": 100,
+    "valor": "0 meses",
+    "motivo": "La antigüedad como socio de 0 meses asigna 10 puntos."
+   },
+   {
+    "codigo": "AHORRO",
+    "descripcion": "Saldo disponible de ahorro en la moneda solicitada",
+    "puntos": 100,
+    "maximo": 100,
+    "valor": "2290.50 (28.63%)",
+    "motivo": "El saldo elegible representa 28.63% del monto solicitado y asigna 100 puntos."
+   },
+   {
+    "codigo": "HISTORIAL_INTERNO",
+    "descripcion": "Historial de créditos internos y morosidad",
+    "puntos": 100,
+    "maximo": 100,
+    "valor": "Créditos previos sin mora",
+    "motivo": "Existen créditos anteriores sin morosidad vigente."
+   }
+  ],
+  "knockouts": [],
+  "explicacion": "Dictamen APROBADO con puntaje 910/1000. Factores más débiles: ANTIGUEDAD_SOCIO: La antigüedad como socio de 0 meses asigna 10 puntos. AHORRO: El saldo elegible representa 28.63% del monto solicitado y asigna 100 puntos. Factores más fuertes: CAPACIDAD_PAGO: La relación es igual o menor al 50% del máximo permitido. CALIFICACION_ASFI: La categoría A asigna 200 puntos.",
+  "cuota_estimada": "399.39",
+  "relacion_cuota_ingreso": "6.66",
+  "probabilidad_mora": "0.0492",
+  "nivel_riesgo": "BAJO",
+  "version_modelo": "reglas-v2",
+  "socio": {
+   "id": 3,
+   "nombre_completo": "Sofia Socia",
+   "ci": "5551234"
+  },
+  "producto": {
+   "id": 2,
+   "nombre": "Crédito de Consumo"
+  }
+ }
+}

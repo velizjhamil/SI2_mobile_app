@@ -83,6 +83,43 @@ class CampoService {
         : CampoResult.failure(result.error);
   }
 
+  Future<CampoResult<List<SocioPrecalificacion>>> getSociosActivos({
+    http.Client? client,
+  }) async {
+    return _getList(
+      '/socios/',
+      {'estado': 'ACTIVO'},
+      SocioPrecalificacion.fromJson,
+      client,
+    );
+  }
+
+  Future<CampoResult<List<ProductoPrecalificacion>>> getProductosActivos({
+    http.Client? client,
+  }) async {
+    return _getList(
+      '/creditos/productos',
+      {'estado': 'ACTIVO'},
+      ProductoPrecalificacion.fromJson,
+      client,
+    );
+  }
+
+  Future<CampoResult<PrecalificacionResultado>> precalificar(
+    PrecalificacionForm form, {
+    http.Client? client,
+  }) async {
+    final result = await _request(
+      'POST',
+      '/creditos/precalificacion',
+      body: form.toJson(),
+      client: client,
+    );
+    return result.success
+        ? CampoResult.success(PrecalificacionResultado.fromJson(result.value!))
+        : CampoResult.failure(result.error);
+  }
+
   Future<CampoResult<List<FotoEvaluacionCampo>>> getFotosEvaluacion(
     int solicitudId, {
     http.Client? client,

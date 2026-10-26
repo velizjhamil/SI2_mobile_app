@@ -1,0 +1,93 @@
+{
+ "status": 200,
+ "body": {
+  "precalificacion": true,
+  "score": 650,
+  "dictamen": "RECHAZADO",
+  "factores": [
+   {
+    "codigo": "CAPACIDAD_PAGO",
+    "descripcion": "Relación cuota-ingreso respecto al máximo del producto",
+    "puntos": 240,
+    "maximo": 300,
+    "valor": "26.63% de 40.00%",
+    "motivo": "La relación está dentro del máximo, pero supera la mitad del límite."
+   },
+   {
+    "codigo": "CALIFICACION_ASFI",
+    "descripcion": "Calificación de riesgo ASFI",
+    "puntos": 0,
+    "maximo": 200,
+    "valor": "E",
+    "motivo": "La categoría E asigna 0 puntos."
+   },
+   {
+    "codigo": "ANTIGUEDAD_LABORAL",
+    "descripcion": "Antigüedad laboral declarada",
+    "puntos": 100,
+    "maximo": 100,
+    "valor": "48 meses",
+    "motivo": "La antigüedad laboral de 48 meses asigna 100 puntos."
+   },
+   {
+    "codigo": "ENDEUDAMIENTO",
+    "descripcion": "Cuota de deudas respecto al ingreso mensual",
+    "puntos": 100,
+    "maximo": 100,
+    "valor": "0.00%",
+    "motivo": "No se declararon cuotas de otras deudas."
+   },
+   {
+    "codigo": "ANTIGUEDAD_SOCIO",
+    "descripcion": "Antigüedad como socio de la cooperativa",
+    "puntos": 10,
+    "maximo": 100,
+    "valor": "0 meses",
+    "motivo": "La antigüedad como socio de 0 meses asigna 10 puntos."
+   },
+   {
+    "codigo": "AHORRO",
+    "descripcion": "Saldo disponible de ahorro en la moneda solicitada",
+    "puntos": 100,
+    "maximo": 100,
+    "valor": "2290.50 (28.63%)",
+    "motivo": "El saldo elegible representa 28.63% del monto solicitado y asigna 100 puntos."
+   },
+   {
+    "codigo": "HISTORIAL_INTERNO",
+    "descripcion": "Historial de créditos internos y morosidad",
+    "puntos": 100,
+    "maximo": 100,
+    "valor": "Créditos previos sin mora",
+    "motivo": "Existen créditos anteriores sin morosidad vigente."
+   }
+  ],
+  "knockouts": [
+   {
+    "codigo": "CUOTA_SUPERA_CAPACIDAD",
+    "descripcion": "La cuota estimada supera la capacidad de pago disponible.",
+    "efecto": "RECHAZADO"
+   },
+   {
+    "codigo": "CALIFICACION_ASFI_CRITICA",
+    "descripcion": "La calificación ASFI E o F requiere rechazo.",
+    "efecto": "RECHAZADO"
+   }
+  ],
+  "explicacion": "Dictamen RECHAZADO con puntaje 650/1000. Reglas de excepción: La cuota estimada supera la capacidad de pago disponible. La calificación ASFI E o F requiere rechazo. Factores más débiles: CALIFICACION_ASFI: La categoría E asigna 0 puntos. ANTIGUEDAD_SOCIO: La antigüedad como socio de 0 meses asigna 10 puntos. Factores más fuertes: CAPACIDAD_PAGO: La relación está dentro del máximo, pero supera la mitad del límite. AHORRO: El saldo elegible representa 28.63% del monto solicitado y asigna 100 puntos.",
+  "cuota_estimada": "399.39",
+  "relacion_cuota_ingreso": "26.63",
+  "probabilidad_mora": "0.3178",
+  "nivel_riesgo": "MEDIO",
+  "version_modelo": "reglas-v2",
+  "socio": {
+   "id": 3,
+   "nombre_completo": "Sofia Socia",
+   "ci": "5551234"
+  },
+  "producto": {
+   "id": 2,
+   "nombre": "Crédito de Consumo"
+  }
+ }
+}

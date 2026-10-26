@@ -1,0 +1,6 @@
+{
+ "status": 400,
+ "body": {
+  "detail": "El monto está fuera del rango permitido para el producto"
+ }
+}
