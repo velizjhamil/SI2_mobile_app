@@ -1,0 +1,20 @@
+{
+ "status": 422,
+ "body": {
+  "detail": [
+   {
+    "type": "value_error",
+    "loc": [
+     "body",
+     "evaluacion",
+     "coordenadas"
+    ],
+    "msg": "Value error, La latitud debe estar entre -90 y 90 grados",
+    "input": "95,-63.18",
+    "ctx": {
+     "error": {}
+    }
+   }
+  ]
+ }
+}

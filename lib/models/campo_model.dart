@@ -167,6 +167,27 @@ class FichaCampoDatosDeclarados {
       );
 }
 
+class FotoEvaluacionCampo {
+  final String id;
+  final String? url;
+
+  const FotoEvaluacionCampo({
+    required this.id,
+    this.url,
+  });
+
+  factory FotoEvaluacionCampo.fromJson(Map<String, dynamic> json) =>
+      FotoEvaluacionCampo(
+        id: _string(json['id']),
+        url: json['url']?.toString(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        if (url != null) 'url': url,
+      };
+}
+
 class EvaluacionCampoExistente {
   final int? id;
   final String ingresoMensual;
@@ -180,6 +201,7 @@ class EvaluacionCampoExistente {
   final String? coordenadas;
   final String? observaciones;
   final String? fecha;
+  final List<FotoEvaluacionCampo> fotografias;
 
   const EvaluacionCampoExistente({
     this.id,
@@ -194,6 +216,7 @@ class EvaluacionCampoExistente {
     this.coordenadas,
     this.observaciones,
     this.fecha,
+    this.fotografias = const [],
   });
 
   factory EvaluacionCampoExistente.fromJson(Map<String, dynamic> json) =>
@@ -210,6 +233,11 @@ class EvaluacionCampoExistente {
         coordenadas: json['coordenadas']?.toString(),
         observaciones: json['observaciones']?.toString(),
         fecha: json['fecha']?.toString(),
+        fotografias: (json['fotografias'] as List? ?? [])
+            .whereType<Map>()
+            .map((e) =>
+                FotoEvaluacionCampo.fromJson(e.cast<String, dynamic>()))
+            .toList(),
       );
 }
 
@@ -278,6 +306,7 @@ class EvaluacionCampoForm {
   final int antiguedadLaboralMeses;
   final String calificacionAsfi;
   final String? observaciones;
+  final String? coordenadas;
 
   const EvaluacionCampoForm({
     required this.ingresoMensual,
@@ -288,6 +317,7 @@ class EvaluacionCampoForm {
     required this.antiguedadLaboralMeses,
     required this.calificacionAsfi,
     this.observaciones,
+    this.coordenadas,
   });
 
   Map<String, dynamic> toJson() => {
@@ -301,6 +331,8 @@ class EvaluacionCampoForm {
           'calificacion_asfi': calificacionAsfi,
           if (observaciones != null && observaciones!.trim().isNotEmpty)
             'observaciones': observaciones!.trim(),
+          if (coordenadas != null && coordenadas!.trim().isNotEmpty)
+            'coordenadas': coordenadas!.trim(),
         }
       };
 }

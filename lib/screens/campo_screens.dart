@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 import '../models/campo_model.dart';
+import '../services/campo_hardware_service.dart';
 import '../services/campo_service.dart';
 import '../services/mock_auth_service.dart';
 
@@ -338,11 +340,15 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
 class FichaCampoScreen extends StatefulWidget {
   final int solicitudId;
   final CampoService? service;
+  final CampoLocationService? locationService;
+  final CampoCameraService? cameraService;
 
   const FichaCampoScreen({
     super.key,
     required this.solicitudId,
     this.service,
+    this.locationService,
+    this.cameraService,
   });
 
   @override
@@ -351,6 +357,10 @@ class FichaCampoScreen extends StatefulWidget {
 
 class _FichaCampoScreenState extends State<FichaCampoScreen> {
   late final CampoService _service = widget.service ?? CampoService();
+  late final CampoLocationService _locationService =
+      widget.locationService ?? GeolocatorCampoLocationService();
+  late final CampoCameraService _cameraService =
+      widget.cameraService ?? DefaultCampoCameraService();
   late Future<CampoResult<FichaCampo>> _future;
 
   // Form controllers
@@ -363,6 +373,17 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
   final _observacionesCtrl = TextEditingController();
   String _fuenteIngresos = 'DEPENDIENTE';
   String _calificacionAsfi = 'A';
+
+  // Location GPS state (CU-M9)
+  bool _gpsLoading = false;
+  String? _gpsError;
+  String? _coordenadas;
+  double? _gpsAccuracy;
+
+  // Photos state (CU-M9)
+  List<FotoEvaluacionCampo> _fotos = [];
+  bool _uploadingPhoto = false;
+  String? _fotoError;
 
   bool _formInitialized = false;
   bool _saving = false;
@@ -407,14 +428,140 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
       _observacionesCtrl.text = eval.observaciones ?? '';
       _fuenteIngresos = eval.fuenteIngresos;
       _calificacionAsfi = eval.calificacionAsfi;
-    } else if (declared != null) {
-      _ingresoCtrl.text = declared.ingresoMensual ?? '';
-      _egresoCtrl.text = declared.egresoMensual ?? '';
-      _actividadCtrl.text = declared.actividadEconomica ?? '';
-      if (declared.fuenteIngresos != null &&
-          ficha.catalogos.fuentesIngresos.contains(declared.fuenteIngresos)) {
-        _fuenteIngresos = declared.fuenteIngresos!;
+      _coordenadas = eval.coordenadas;
+      _fotos = List.from(eval.fotografias);
+    } else {
+      _coordenadas = null;
+      _fotos = [];
+      if (declared != null) {
+        _ingresoCtrl.text = declared.ingresoMensual ?? '';
+        _egresoCtrl.text = declared.egresoMensual ?? '';
+        _actividadCtrl.text = declared.actividadEconomica ?? '';
+        if (declared.fuenteIngresos != null &&
+            ficha.catalogos.fuentesIngresos.contains(declared.fuenteIngresos)) {
+          _fuenteIngresos = declared.fuenteIngresos!;
+        }
       }
+    }
+  }
+
+  Future<void> _capturarUbicacion() async {
+    setState(() {
+      _gpsLoading = true;
+      _gpsError = null;
+    });
+
+    final res = await _locationService.getCurrentPosition();
+
+    if (!mounted) return;
+    setState(() {
+      _gpsLoading = false;
+      if (res.success && res.position != null) {
+        _coordenadas = res.position!.coordenadas;
+        _gpsAccuracy = res.position!.accuracy;
+        _gpsError = null;
+      } else {
+        _gpsError = res.error ?? 'No se pudo obtener la ubicación GPS.';
+      }
+    });
+  }
+
+  Future<void> _tomarFoto() async {
+    if (_fotos.length >= 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Se ha alcanzado el límite máximo de 5 fotografías.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _fotoError = null);
+    final photoRes = await _cameraService.capturePhoto(context);
+
+    if (photoRes.isCancelled || photoRes.bytes == null) {
+      if (photoRes.error != null) {
+        setState(() => _fotoError = photoRes.error);
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _uploadingPhoto = true;
+      _fotoError = null;
+    });
+
+    final uploadRes = await _service.subirFotoEvaluacion(
+      widget.solicitudId,
+      bytes: photoRes.bytes!,
+      filename: photoRes.filename ?? 'foto.jpg',
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _uploadingPhoto = false;
+      if (uploadRes.success) {
+        _fotos = List.from(uploadRes.value!);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Fotografía subida exitosamente.')),
+        );
+      } else {
+        _fotoError = uploadRes.error ?? 'Error al subir fotografía.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_fotoError!)),
+        );
+      }
+    });
+  }
+
+  Future<void> _eliminarFoto(FotoEvaluacionCampo foto) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar fotografía'),
+        content: const Text(
+          '¿Está seguro de eliminar esta fotografía de respaldo?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            key: const Key('dialog_confirm_delete_foto_btn'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final res = await _service.eliminarFotoEvaluacion(
+      widget.solicitudId,
+      foto.id,
+    );
+
+    if (!mounted) return;
+    if (res.success) {
+      setState(() {
+        _fotos = List.from(res.value!);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fotografía eliminada exitosamente.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res.error ?? 'Error al eliminar fotografía.'),
+        ),
+      );
     }
   }
 
@@ -434,6 +581,7 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
       observaciones: _observacionesCtrl.text.trim().isNotEmpty
           ? _observacionesCtrl.text.trim()
           : null,
+      coordenadas: _coordenadas,
     );
 
     final res = await _service.guardarEvaluacion(widget.solicitudId, form);
@@ -514,9 +662,11 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
           final ficha = result.value!;
           _initFormFields(ficha);
 
-          return ListView(
+          return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            children: [
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // Solicitud Card
               Container(
                 padding: const EdgeInsets.all(16),
@@ -813,6 +963,100 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
                           border: OutlineInputBorder(),
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      // Georreferenciación GPS (CU-M9)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: accentColor.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.location_on_outlined,
+                                    size: 20, color: accentColor),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Georreferenciación GPS',
+                                  style: GoogleFonts.manrope(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: textColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            if (_coordenadas != null) ...[
+                              Text(
+                                'Coordenadas: $_coordenadas',
+                                key: const Key('eval_coordenadas_text'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor,
+                                ),
+                              ),
+                              if (_gpsAccuracy != null)
+                                Text(
+                                  'Precisión: ±${_gpsAccuracy!.toStringAsFixed(1)} m',
+                                  key: const Key('eval_gps_accuracy_text'),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: subtextColor,
+                                  ),
+                                ),
+                              const SizedBox(height: 8),
+                            ],
+                            if (_gpsError != null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  _gpsError!,
+                                  key: const Key('eval_gps_error_text'),
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                key: const Key('eval_capturar_gps_btn'),
+                                icon: _gpsLoading
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(Icons.my_location, size: 18),
+                                label: Text(
+                                  _coordenadas != null
+                                      ? 'Actualizar ubicación GPS'
+                                      : 'Capturar ubicación GPS',
+                                ),
+                                onPressed:
+                                    _gpsLoading ? null : _capturarUbicacion,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
@@ -842,6 +1086,229 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Photos Section (CU-M9)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Fotografías de Respaldo (${_fotos.length}/5)',
+                          key: const Key('fotos_section_title'),
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: textColor,
+                          ),
+                        ),
+                        if (ficha.evaluacion != null && _fotos.length < 5)
+                          ElevatedButton.icon(
+                            key: const Key('fotos_tomar_foto_btn'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: accentColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            icon: _uploadingPhoto
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.camera_alt, size: 16),
+                            label: const Text(
+                              'Tomar foto',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            onPressed: _uploadingPhoto ? null : _tomarFoto,
+                          ),
+                      ],
+                    ),
+                    const Divider(height: 16),
+                    if (ficha.evaluacion == null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.amber.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline,
+                                color: Colors.orange, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Debe guardar la evaluación socioeconómica antes de adjuntar fotografías de respaldo.',
+                                key: const Key(
+                                    'fotos_evaluacion_requerida_hint'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? Colors.amber[200]
+                                      : Colors.amber[900],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      if (_fotoError != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  size: 16, color: Colors.red),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  _fotoError!,
+                                  key: const Key('fotos_error_text'),
+                                  style: const TextStyle(
+                                      color: Colors.red, fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (_fotos.isEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: Text(
+                              'No hay fotografías adjuntas. Puede agregar hasta 5 fotos.',
+                              style: TextStyle(
+                                  fontSize: 12, color: subtextColor),
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: List.generate(_fotos.length, (index) {
+                            final foto = _fotos[index];
+                            return Stack(
+                              children: [
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.grey[850]
+                                        : Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: borderColor),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: foto.url != null &&
+                                          foto.url!.isNotEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl: foto.url!,
+                                          fit: BoxFit.cover,
+                                          placeholder: (_, __) => const Center(
+                                            child: SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child:
+                                                  CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                          ),
+                                          errorWidget: (_, __, ___) =>
+                                              const Center(
+                                            child: Icon(Icons.broken_image,
+                                                color: Colors.grey),
+                                          ),
+                                        )
+                                      : Column(
+                                          key: Key(
+                                              'foto_placeholder_tile_$index'),
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.photo_outlined,
+                                              size: 32,
+                                              color: subtextColor,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 4),
+                                              child: Text(
+                                                'Sin vista previa',
+                                                style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: subtextColor),
+                                                textAlign: TextAlign.center,
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: Material(
+                                    color: Colors.black54,
+                                    shape: const CircleBorder(),
+                                    child: InkWell(
+                                      key: Key('foto_delete_btn_$index'),
+                                      customBorder: const CircleBorder(),
+                                      onTap: () => _eliminarFoto(foto),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(4),
+                                        child: Icon(
+                                          Icons.delete_outline,
+                                          size: 16,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }),
+                        ),
+                      ],
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -1014,7 +1481,8 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
                 ),
               ),
             ],
-          );
+          ),
+        );
         },
       ),
     );

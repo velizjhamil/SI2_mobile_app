@@ -1,0 +1,6 @@
+{
+ "status": 415,
+ "body": {
+  "detail": "Solo se permiten fotografías JPEG o PNG válidas"
+ }
+}

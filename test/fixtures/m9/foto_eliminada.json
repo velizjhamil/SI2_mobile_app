@@ -1,0 +1,13 @@
+{
+ "status": 200,
+ "body": [
+  {
+   "id": "negocio_demo.jpg",
+   "url": null
+  },
+  {
+   "id": "domicilio_demo.jpg",
+   "url": null
+  }
+ ]
+}
