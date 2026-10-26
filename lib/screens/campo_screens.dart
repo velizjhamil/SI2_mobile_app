@@ -9,24 +9,145 @@ import '../models/campo_model.dart';
 import '../services/campo_hardware_service.dart';
 import '../services/campo_service.dart';
 import '../services/mock_auth_service.dart';
+import '../services/offline_store.dart';
+import '../services/sync_campo_service.dart';
+import '../services/sync_service.dart';
+import '../widgets/offline_banner.dart';
+import 'conflictos_screen.dart';
 
 class CampoHomeScreen extends StatefulWidget {
   final CampoService? service;
-  const CampoHomeScreen({super.key, this.service});
+  final OfflineStore? store;
+  final SyncService? syncService;
+  final Future<OfflineStore?> Function()? storeFactory;
+
+  const CampoHomeScreen({
+    super.key,
+    this.service,
+    this.store,
+    this.syncService,
+    this.storeFactory,
+  });
 
   @override
   State<CampoHomeScreen> createState() => _CampoHomeScreenState();
 }
 
-class _CampoHomeScreenState extends State<CampoHomeScreen> {
-  late final CampoService _service = widget.service ?? CampoService();
+class _CampoHomeScreenState extends State<CampoHomeScreen>
+    with WidgetsBindingObserver {
+  late CampoService _service;
+  OfflineStore? _store;
+  SyncService? _syncService;
   String _canalFilter = 'TODOS';
-  late Future<CampoResult<List<SolicitudResumenCampo>>> _future;
+  Future<CampoResult<List<SolicitudResumenCampo>>>? _future;
+
+  int _pendingCount = 0;
+  int _conflictsCount = 0;
+  Set<int> _pendingSolicitudIds = {};
+  bool _syncing = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initServiceAndStore();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _autoSync();
+    }
+  }
+
+  Future<void> _initServiceAndStore() async {
+    if (widget.service is SyncCampoService) {
+      final syncService = widget.service as SyncCampoService;
+      _service = syncService;
+      _store = syncService.store;
+      _syncService = syncService.syncService;
+    } else {
+      _service = widget.service ?? CampoService();
+      _store = widget.store;
+      _syncService = widget.syncService;
+      if (_store == null && widget.service == null) {
+        try {
+          if (widget.storeFactory != null) {
+            _store = await widget.storeFactory!();
+          } else {
+            _store = await OfflineStore.create();
+          }
+          if (_store != null) {
+            _syncService = SyncService(campoService: _service, store: _store!);
+            _service = SyncCampoService(
+              innerService: _service,
+              store: _store!,
+              syncService: _syncService,
+            );
+          }
+        } catch (_) {}
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _load();
+      });
+      await _refreshSyncStatus();
+      _autoSync();
+    }
+  }
+
+  Future<void> _autoSync() async {
+    if (_syncService == null) return;
+    await _syncService!.sync();
+    if (mounted) {
+      _refreshSyncStatus();
+    }
+  }
+
+  Future<void> _refreshSyncStatus() async {
+    if (_store == null) return;
+    try {
+      final queue = await _store!.getQueue();
+      final conflicts = await _store!.getConflicts();
+      if (!mounted) return;
+      setState(() {
+        _pendingCount = queue.length;
+        _conflictsCount = conflicts.length;
+        _pendingSolicitudIds = queue
+            .where((i) => i.solicitudId != null)
+            .map((i) => i.solicitudId!)
+            .toSet();
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _manualSync() async {
+    if (_syncService == null) return;
+    setState(() => _syncing = true);
+    final result = await _syncService!.sync();
+    if (!mounted) return;
+    setState(() => _syncing = false);
+    await _refreshSyncStatus();
     _load();
+    if (mounted) setState(() {});
+
+    final msg = result.isUnauthorized
+        ? 'Sesión expirada. Inicie sesión nuevamente.'
+        : result.isNetworkError
+            ? 'Sin conexión. Los elementos continúan en cola.'
+            : 'Sincronización completada: ${result.syncedCount} sincronizados, ${result.conflictsCount} conflictos.';
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
   }
 
   void _load() {
@@ -34,6 +155,7 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
       requiereEvaluacion: true,
       canalOrigen: _canalFilter == 'TODOS' ? null : _canalFilter,
     );
+    _refreshSyncStatus();
   }
 
   Future<void> _logout() async {
@@ -94,6 +216,54 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
           style: GoogleFonts.manrope(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
+          if (_conflictsCount > 0)
+            IconButton(
+              key: const Key('campo_conflictos_btn'),
+              tooltip: 'Conflictos de sincronización',
+              icon: Badge(
+                label: Text('$_conflictsCount'),
+                backgroundColor: AppColors.error,
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.error,
+                ),
+              ),
+              onPressed: () async {
+                if (_store != null) {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ConflictosScreen(store: _store!),
+                    ),
+                  );
+                  _refreshSyncStatus();
+                }
+              },
+            ),
+          TextButton.icon(
+            key: const Key('campo_sync_btn'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              visualDensity: VisualDensity.compact,
+            ),
+            icon: _syncing
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : _pendingCount > 0
+                    ? Badge(
+                        label: Text('$_pendingCount'),
+                        child: const Icon(Icons.sync, size: 20),
+                      )
+                    : const Icon(Icons.sync, size: 20),
+            label: const Text(
+              'Sincronizar ahora',
+              style: TextStyle(fontSize: 12),
+            ),
+            onPressed: _syncing ? null : _manualSync,
+          ),
           IconButton(
             key: const Key('campo_precalificar_nav_btn'),
             tooltip: 'Precalificar',
@@ -102,7 +272,10 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => PrecalificacionScreen(service: _service),
+                  builder: (_) => PrecalificacionScreen(
+                    service: _service,
+                    store: _store,
+                  ),
                 ),
               );
             },
@@ -117,6 +290,12 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
       ),
       body: Column(
         children: [
+          if (_service is SyncCampoService &&
+              (_service as SyncCampoService).isWorklistOffline)
+            OfflineBanner(
+              cachedTimestamp:
+                  (_service as SyncCampoService).lastWorklistCacheTime,
+            ),
           // Filter Chips
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -181,7 +360,8 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
             child: FutureBuilder<CampoResult<List<SolicitudResumenCampo>>>(
               future: _future,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                if (_future == null ||
+                    snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 final result = snapshot.data;
@@ -280,25 +460,53 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
                                       color: textColor,
                                     ),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: isMovil
-                                          ? accentColor.withValues(alpha: 0.15)
-                                          : Colors.blue.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      item.canalOrigen,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: isMovil
-                                            ? accentColor
-                                            : Colors.blue,
+                                  Row(
+                                    children: [
+                                      if (_pendingSolicitudIds.contains(item.id)) ...[
+                                        Container(
+                                          key: Key('solicitud_pendiente_sync_badge_${item.id}'),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                            border: Border.all(
+                                                color: Colors.amber.shade700),
+                                          ),
+                                          child: Text(
+                                            'Pendiente de sincronizar',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.amber.shade900,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                      ],
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: isMovil
+                                              ? accentColor.withValues(alpha: 0.15)
+                                              : Colors.blue.withValues(alpha: 0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          item.canalOrigen,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: isMovil
+                                                ? accentColor
+                                                : Colors.blue,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -334,6 +542,36 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
                                       size: 14, color: Colors.grey),
                                 ],
                               ),
+                              if (_pendingSolicitudIds.contains(item.id)) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  key: Key('pending_sync_badge_${item.id}'),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        Colors.orange.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.orange),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.schedule,
+                                          size: 12, color: Colors.orange),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Pendiente de sincronizar',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.orange,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -366,6 +604,7 @@ class _CampoHomeScreenState extends State<CampoHomeScreen> {
 class FichaCampoScreen extends StatefulWidget {
   final int solicitudId;
   final CampoService? service;
+  final OfflineStore? store;
   final CampoLocationService? locationService;
   final CampoCameraService? cameraService;
 
@@ -373,6 +612,7 @@ class FichaCampoScreen extends StatefulWidget {
     super.key,
     required this.solicitudId,
     this.service,
+    this.store,
     this.locationService,
     this.cameraService,
   });
@@ -388,6 +628,8 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
   late final CampoCameraService _cameraService =
       widget.cameraService ?? DefaultCampoCameraService();
   late Future<CampoResult<FichaCampo>> _future;
+
+  bool _isPendingSync = false;
 
   // Form controllers
   final _formKey = GlobalKey<FormState>();
@@ -425,6 +667,23 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
 
   void _load() {
     _future = _service.getFichaCampo(widget.solicitudId);
+    _checkPendingSync();
+  }
+
+  Future<void> _checkPendingSync() async {
+    final store = widget.store ??
+        (_service is SyncCampoService
+            ? (_service as SyncCampoService).store
+            : null);
+    if (store == null) return;
+    try {
+      final queue = await store.getQueue();
+      if (!mounted) return;
+      setState(() {
+        _isPendingSync =
+            queue.any((item) => item.solicitudId == widget.solicitudId);
+      });
+    } catch (_) {}
   }
 
   @override
@@ -532,6 +791,14 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Fotografía subida exitosamente.')),
         );
+      } else if (uploadRes.isNetworkError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Sin conexión. Fotografía en cola (Pendiente de sincronizar).',
+            ),
+          ),
+        );
       } else {
         _fotoError = uploadRes.error ?? 'Error al subir fotografía.';
         ScaffoldMessenger.of(context).showSnackBar(
@@ -539,6 +806,7 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
         );
       }
     });
+    await _checkPendingSync();
   }
 
   Future<void> _eliminarFoto(FotoEvaluacionCampo foto) async {
@@ -582,6 +850,14 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Fotografía eliminada exitosamente.')),
       );
+    } else if (res.isNetworkError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Sin conexión. Eliminación en cola (Pendiente de sincronizar).',
+          ),
+        ),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -589,6 +865,7 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
         ),
       );
     }
+    await _checkPendingSync();
   }
 
   Future<void> _guardarEvaluacion() async {
@@ -621,7 +898,17 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
       );
       _formInitialized = false;
       _load();
+      await _checkPendingSync();
       setState(() {});
+    } else if (res.isNetworkError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Sin conexión. Evaluación en cola (Pendiente de sincronizar).',
+          ),
+        ),
+      );
+      await _checkPendingSync();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(res.error ?? 'Error al guardar evaluación.')),
@@ -660,6 +947,12 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
     final subtextColor = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final accentColor = isDark ? AppColors.primary : AppColors.forestGreen;
 
+    final isOffline = _service is SyncCampoService &&
+        (_service as SyncCampoService).isFichaOffline;
+    final cachedTime = _service is SyncCampoService
+        ? (_service as SyncCampoService).lastFichaCacheTime
+        : null;
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -669,9 +962,14 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
           style: GoogleFonts.manrope(fontWeight: FontWeight.bold, fontSize: 18),
         ),
       ),
-      body: FutureBuilder<CampoResult<FichaCampo>>(
-        future: _future,
-        builder: (context, snapshot) {
+      body: Column(
+        children: [
+          if (isOffline && cachedTime != null)
+            OfflineBanner(cachedTimestamp: cachedTime),
+          Expanded(
+            child: FutureBuilder<CampoResult<FichaCampo>>(
+              future: _future,
+              builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -715,21 +1013,47 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
                             color: textColor,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: accentColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            ficha.solicitud.estado,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: accentColor,
+                        Row(
+                          children: [
+                            if (_isPendingSync) ...[
+                              Container(
+                                key: const Key('ficha_pendiente_sync_badge'),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade100,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                      color: Colors.amber.shade700),
+                                ),
+                                child: Text(
+                                  'Pendiente de sincronizar',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber.shade900,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: accentColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                ficha.solicitud.estado,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: accentColor,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -1511,6 +1835,9 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
         );
         },
       ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1537,8 +1864,9 @@ class _FichaCampoScreenState extends State<FichaCampoScreen> {
 
 class PrecalificacionScreen extends StatefulWidget {
   final CampoService? service;
+  final OfflineStore? store;
 
-  const PrecalificacionScreen({super.key, this.service});
+  const PrecalificacionScreen({super.key, this.service, this.store});
 
   @override
   State<PrecalificacionScreen> createState() => _PrecalificacionScreenState();
@@ -1546,6 +1874,8 @@ class PrecalificacionScreen extends StatefulWidget {
 
 class _PrecalificacionScreenState extends State<PrecalificacionScreen> {
   late final CampoService _service = widget.service ?? CampoService();
+  OfflineStore? _store;
+  List<PrecalificacionResultado> _completedPrecalificaciones = [];
 
   bool _loadingData = true;
   String? _initError;
@@ -1598,6 +1928,17 @@ class _PrecalificacionScreenState extends State<PrecalificacionScreen> {
       _loadingData = true;
       _initError = null;
     });
+
+    _store = widget.store ??
+        (_service is SyncCampoService
+            ? (_service as SyncCampoService).store
+            : null);
+    if (_store != null) {
+      try {
+        _completedPrecalificaciones =
+            await _store!.getCompletedPrequalifications();
+      } catch (_) {}
+    }
 
     try {
       final results = await Future.wait([
@@ -1827,6 +2168,17 @@ class _PrecalificacionScreenState extends State<PrecalificacionScreen> {
       _submitting = false;
     });
 
+    if (result.isNetworkError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Sin conexión. Precalificación en cola (Pendiente de sincronizar).',
+          ),
+        ),
+      );
+      return;
+    }
+
     if (!result.success || result.value == null) {
       setState(() {
         _backendError = result.error ?? 'Error al procesar la precalificación';
@@ -1856,6 +2208,14 @@ class _PrecalificacionScreenState extends State<PrecalificacionScreen> {
         isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final accentColor = isDark ? AppColors.primary : AppColors.forestGreen;
 
+    final isOffline = _service is SyncCampoService &&
+        ((_service as SyncCampoService).isSociosOffline ||
+            (_service as SyncCampoService).isProductosOffline);
+    final cachedTime = _service is SyncCampoService
+        ? ((_service as SyncCampoService).lastSociosCacheTime ??
+            (_service as SyncCampoService).lastProductosCacheTime)
+        : null;
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -1865,9 +2225,14 @@ class _PrecalificacionScreenState extends State<PrecalificacionScreen> {
           style: GoogleFonts.manrope(fontWeight: FontWeight.bold, fontSize: 18),
         ),
       ),
-      body: _loadingData
-          ? const Center(child: CircularProgressIndicator())
-          : _initError != null
+      body: Column(
+        children: [
+          if (isOffline && cachedTime != null)
+            OfflineBanner(cachedTimestamp: cachedTime),
+          Expanded(
+            child: _loadingData
+                ? const Center(child: CircularProgressIndicator())
+                : _initError != null
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -2274,9 +2639,70 @@ class _PrecalificacionScreenState extends State<PrecalificacionScreen> {
                           onPressed: _submitting ? null : _onSubmit,
                         ),
                       ),
+                      if (_completedPrecalificaciones.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          'Precalificaciones completadas',
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ..._completedPrecalificaciones.map((item) {
+                          final socioText =
+                              item.socioNombre ?? 'Socio #${item.socioId ?? ""}';
+                          final dictamenBadgeText =
+                              '${item.dictamen} (${item.score} pts)';
+                          return Card(
+                            color: cardBg,
+                            margin: const EdgeInsets.only(bottom: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(color: borderColor),
+                            ),
+                            child: ListTile(
+                              title: Text(
+                                socioText,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                              subtitle: Text(
+                                dictamenBadgeText,
+                                style: TextStyle(
+                                  color: item.isAprobado
+                                      ? AppColors.forestGreen
+                                      : (item.isRechazado
+                                          ? AppColors.error
+                                          : Colors.orange),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        PrecalificacionResultadoScreen(
+                                      resultado: item,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        }),
+                      ],
                     ],
                   ),
                 ),
+          ),
+        ],
+      ),
     );
   }
 }

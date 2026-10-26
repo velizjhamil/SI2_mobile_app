@@ -93,7 +93,14 @@ class AuthService {
     defaultValue: 'http://10.0.2.2:8000/api/v1',
   );
 
-  static String? tokenJWT;
+  static String? _tokenJWT;
+  static String? get tokenJWT => _tokenJWT;
+  static set tokenJWT(String? value) {
+    _tokenJWT = value;
+    currentUserId = _userIdFromToken(value);
+  }
+
+  static String? currentUserId;
   static String? currentRole;
   static const SecureTokenStore defaultStore = FlutterSecureTokenStore();
   static SecureTokenStore currentStore = defaultStore;
@@ -363,6 +370,21 @@ class AuthService {
       return exp is num
           ? DateTime.fromMillisecondsSinceEpoch(exp.toInt() * 1000, isUtc: true)
           : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String? _userIdFromToken(String? token) {
+    if (token == null || token.isEmpty) return null;
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+      );
+      final sub = payload is Map ? payload['sub'] : null;
+      return sub?.toString();
     } catch (_) {
       return null;
     }

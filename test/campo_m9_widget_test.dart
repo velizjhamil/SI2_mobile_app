@@ -68,6 +68,7 @@ class FakeM9CampoService extends CampoService {
     int solicitudId, {
     required List<int> bytes,
     required String filename,
+    String? clientId,
     http.Client? client,
   }) async {
     uploadCalls++;

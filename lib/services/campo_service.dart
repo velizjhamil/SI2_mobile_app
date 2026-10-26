@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -11,14 +12,28 @@ class CampoResult<T> {
   final bool success;
   final T? value;
   final String? error;
+  final int? statusCode;
+  final bool isNetworkError;
 
-  const CampoResult.success(this.value)
+  const CampoResult.success(this.value, {this.statusCode = 200})
       : success = true,
-        error = null;
+        error = null,
+        isNetworkError = false;
 
-  const CampoResult.failure(this.error)
-      : success = false,
+  const CampoResult.failure(
+    this.error, {
+    this.statusCode,
+    this.isNetworkError = false,
+  })  : success = false,
         value = null;
+
+  const CampoResult.networkError([String? message])
+      : success = false,
+        value = null,
+        error = message ??
+            'No se pudo conectar con el servidor. Verifique su conexión.',
+        statusCode = null,
+        isNetworkError = true;
 }
 
 class CampoService {
@@ -64,8 +79,15 @@ class CampoService {
       client: client,
     );
     return result.success
-        ? CampoResult.success(SolicitudResumenCampo.fromJson(result.value!))
-        : CampoResult.failure(result.error);
+        ? CampoResult.success(
+            SolicitudResumenCampo.fromJson(result.value!),
+            statusCode: result.statusCode ?? 200,
+          )
+        : CampoResult.failure(
+            result.error,
+            statusCode: result.statusCode,
+            isNetworkError: result.isNetworkError,
+          );
   }
 
   Future<CampoResult<ScoringResultado>> calcularScoring(
@@ -79,8 +101,15 @@ class CampoService {
       client: client,
     );
     return result.success
-        ? CampoResult.success(ScoringResultado.fromJson(result.value!))
-        : CampoResult.failure(result.error);
+        ? CampoResult.success(
+            ScoringResultado.fromJson(result.value!),
+            statusCode: result.statusCode ?? 200,
+          )
+        : CampoResult.failure(
+            result.error,
+            statusCode: result.statusCode,
+            isNetworkError: result.isNetworkError,
+          );
   }
 
   Future<CampoResult<List<SocioPrecalificacion>>> getSociosActivos({
@@ -116,8 +145,15 @@ class CampoService {
       client: client,
     );
     return result.success
-        ? CampoResult.success(PrecalificacionResultado.fromJson(result.value!))
-        : CampoResult.failure(result.error);
+        ? CampoResult.success(
+            PrecalificacionResultado.fromJson(result.value!),
+            statusCode: result.statusCode ?? 200,
+          )
+        : CampoResult.failure(
+            result.error,
+            statusCode: result.statusCode,
+            isNetworkError: result.isNetworkError,
+          );
   }
 
   Future<CampoResult<List<FotoEvaluacionCampo>>> getFotosEvaluacion(
@@ -144,40 +180,55 @@ class CampoService {
       '/creditos/solicitudes/$solicitudId/evaluacion/fotos/$encodedFotoId',
       client: client,
     );
-    if (!result.success) return CampoResult.failure(result.error);
+    if (!result.success) {
+      return CampoResult.failure(
+        result.error,
+        statusCode: result.statusCode,
+        isNetworkError: result.isNetworkError,
+      );
+    }
     final raw = result.value!['_list'] ??
         result.value!['data'] ??
         result.value!['items'];
     final list = raw is List ? raw : const [];
-    return CampoResult.success(list
-        .whereType<Map>()
-        .map((item) =>
-            FotoEvaluacionCampo.fromJson(item.cast<String, dynamic>()))
-        .toList());
+    return CampoResult.success(
+      list
+          .whereType<Map>()
+          .map((item) =>
+              FotoEvaluacionCampo.fromJson(item.cast<String, dynamic>()))
+          .toList(),
+      statusCode: result.statusCode ?? 200,
+    );
   }
 
   Future<CampoResult<List<FotoEvaluacionCampo>>> subirFotoEvaluacion(
     int solicitudId, {
     required List<int> bytes,
     required String filename,
+    String? clientId,
     http.Client? client,
   }) async {
     final token = AuthService.tokenJWT;
     if (token == null || token.isEmpty) {
       return const CampoResult.failure(
         'No hay sesión activa. Inicie sesión nuevamente.',
+        statusCode: 401,
       );
     }
 
     final url = Uri.parse(
       '${AuthService.baseUrl}/creditos/solicitudes/$solicitudId/evaluacion/fotos',
     );
-    final httpClient = client ?? http.Client();
+    http.Client? httpClient;
     final close = client == null;
 
     try {
+      httpClient = client ?? http.Client();
       final request = http.MultipartRequest('POST', url);
       request.headers['Authorization'] = 'Bearer $token';
+      if (clientId != null && clientId.isNotEmpty) {
+        request.headers['X-Client-Id'] = clientId;
+      }
 
       final ext = filename.split('.').last.toLowerCase();
       final isPng = ext == 'png';
@@ -198,27 +249,45 @@ class CampoService {
       final response = await http.Response.fromStream(streamedResponse);
 
       final result = await _handleResponse(response);
-      if (!result.success) return CampoResult.failure(result.error);
+      if (!result.success) {
+        return CampoResult.failure(
+          result.error,
+          statusCode: result.statusCode,
+          isNetworkError: result.isNetworkError,
+        );
+      }
 
       final raw = result.value!['_list'] ??
           result.value!['data'] ??
           result.value!['items'];
       final list = raw is List ? raw : const [];
-      return CampoResult.success(list
-          .whereType<Map>()
-          .map((item) =>
-              FotoEvaluacionCampo.fromJson(item.cast<String, dynamic>()))
-          .toList());
+      return CampoResult.success(
+        list
+            .whereType<Map>()
+            .map((item) =>
+                FotoEvaluacionCampo.fromJson(item.cast<String, dynamic>()))
+            .toList(),
+        statusCode: result.statusCode ?? 200,
+      );
     } on TimeoutException {
-      return const CampoResult.failure(
+      return const CampoResult.networkError(
         'Tiempo de espera agotado. Intente nuevamente.',
       );
-    } catch (_) {
-      return const CampoResult.failure(
+    } on SocketException {
+      return const CampoResult.networkError(
         'No se pudo conectar con el servidor. Verifique su conexión.',
       );
+    } on http.ClientException {
+      return const CampoResult.networkError(
+        'No se pudo conectar con el servidor. Verifique su conexión.',
+      );
+    } catch (e) {
+      return CampoResult.failure(
+        'Error inesperado: $e',
+        isNetworkError: false,
+      );
     } finally {
-      if (close) httpClient.close();
+      if (close) httpClient?.close();
     }
   }
 
@@ -230,8 +299,15 @@ class CampoService {
   ) async {
     final result = await _request('GET', path, query: query, client: client);
     return result.success
-        ? CampoResult.success(parser(result.value!))
-        : CampoResult.failure(result.error);
+        ? CampoResult.success(
+            parser(result.value!),
+            statusCode: result.statusCode ?? 200,
+          )
+        : CampoResult.failure(
+            result.error,
+            statusCode: result.statusCode,
+            isNetworkError: result.isNetworkError,
+          );
   }
 
   Future<CampoResult<List<T>>> _getList<T>(
@@ -241,15 +317,24 @@ class CampoService {
     http.Client? client,
   ) async {
     final result = await _request('GET', path, query: query, client: client);
-    if (!result.success) return CampoResult.failure(result.error);
+    if (!result.success) {
+      return CampoResult.failure(
+        result.error,
+        statusCode: result.statusCode,
+        isNetworkError: result.isNetworkError,
+      );
+    }
     final raw = result.value!['data'] ??
         result.value!['items'] ??
         result.value!['value'];
     final list = raw is List ? raw : result.value!['_list'];
-    return CampoResult.success((list is List ? list : const [])
-        .whereType<Map>()
-        .map((item) => parser(item.cast<String, dynamic>()))
-        .toList());
+    return CampoResult.success(
+      (list is List ? list : const [])
+          .whereType<Map>()
+          .map((item) => parser(item.cast<String, dynamic>()))
+          .toList(),
+      statusCode: result.statusCode ?? 200,
+    );
   }
 
   Future<CampoResult<Map<String, dynamic>>> _request(
@@ -263,15 +348,17 @@ class CampoService {
     if (token == null || token.isEmpty) {
       return const CampoResult.failure(
         'No hay sesión activa. Inicie sesión nuevamente.',
+        statusCode: 401,
       );
     }
 
     final base = Uri.parse('${AuthService.baseUrl}$path');
     final url = query == null ? base : base.replace(queryParameters: query);
-    final httpClient = client ?? http.Client();
+    http.Client? httpClient;
     final close = client == null;
 
     try {
+      httpClient = client ?? http.Client();
       final headers = {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -298,15 +385,24 @@ class CampoService {
 
       return await _handleResponse(response);
     } on TimeoutException {
-      return const CampoResult.failure(
+      return const CampoResult.networkError(
         'Tiempo de espera agotado. Intente nuevamente.',
       );
-    } catch (_) {
-      return const CampoResult.failure(
+    } on SocketException {
+      return const CampoResult.networkError(
         'No se pudo conectar con el servidor. Verifique su conexión.',
       );
+    } on http.ClientException {
+      return const CampoResult.networkError(
+        'No se pudo conectar con el servidor. Verifique su conexión.',
+      );
+    } catch (e) {
+      return CampoResult.failure(
+        'Error inesperado: $e',
+        isNetworkError: false,
+      );
     } finally {
-      if (close) httpClient.close();
+      if (close) httpClient?.close();
     }
   }
 
@@ -316,9 +412,15 @@ class CampoService {
     final decoded = _decode(response.body);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (decoded is List) return CampoResult.success({'_list': decoded});
+      if (decoded is List) {
+        return CampoResult.success(
+          {'_list': decoded},
+          statusCode: response.statusCode,
+        );
+      }
       return CampoResult.success(
         decoded is Map<String, dynamic> ? decoded : {},
+        statusCode: response.statusCode,
       );
     }
 
@@ -326,12 +428,13 @@ class CampoService {
       await SessionManager.onUnauthorized();
       return const CampoResult.failure(
         'Sesión no válida o expirada. Inicie sesión nuevamente.',
+        statusCode: 401,
       );
     }
 
     final detail = decoded is Map ? decoded['detail'] : null;
     if (detail is String && detail.isNotEmpty) {
-      return CampoResult.failure(detail);
+      return CampoResult.failure(detail, statusCode: response.statusCode);
     }
     if (detail is List && detail.isNotEmpty) {
       final messages = detail.map((item) {
@@ -340,11 +443,12 @@ class CampoService {
         }
         return item.toString();
       }).join('; ');
-      return CampoResult.failure(messages);
+      return CampoResult.failure(messages, statusCode: response.statusCode);
     }
 
     return CampoResult.failure(
       'Error del servidor (${response.statusCode}). Intente más tarde.',
+      statusCode: response.statusCode,
     );
   }
 

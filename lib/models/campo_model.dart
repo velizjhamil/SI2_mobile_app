@@ -73,6 +73,37 @@ class SolicitudResumenCampo {
       ultimaEvaluacionScore: ultEvalMap != null ? _int(ultEvalMap['score']) : null,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'numero_solicitud': numeroSolicitud,
+        'fecha_solicitud': fechaSolicitud,
+        if (fechaActualizacion != null) 'fecha_actualizacion': fechaActualizacion,
+        'estado': estado,
+        'socio': {
+          'nombre_completo': socioNombre,
+          'ci': socioCi,
+        },
+        'producto': {
+          'nombre': productoNombre,
+        },
+        'moneda': {
+          'simbolo': monedaSimbolo,
+        },
+        'monto': monto,
+        'plazo_meses': plazoMeses,
+        'destino': destino,
+        if (destinoDetalle != null) 'destino_detalle': destinoDetalle,
+        'canal_origen': canalOrigen,
+        'requiere_evaluacion': requiereEvaluacion,
+        if (evaluacion != null) 'evaluacion': evaluacion!.toJson(),
+        if (ultimaEvaluacionDictamen != null || ultimaEvaluacionScore != null)
+          'ultima_evaluacion': {
+            if (ultimaEvaluacionDictamen != null)
+              'dictamen': ultimaEvaluacionDictamen,
+            if (ultimaEvaluacionScore != null) 'score': ultimaEvaluacionScore,
+          },
+      };
 }
 
 class FichaCampoSolicitud {
@@ -113,6 +144,19 @@ class FichaCampoSolicitud {
         canalOrigen: _string(json['canal_origen']),
         requiereEvaluacion: json['requiere_evaluacion'] == true,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'numero_solicitud': numeroSolicitud,
+        'producto': producto,
+        'monto': monto,
+        'plazo_meses': plazoMeses,
+        'destino': destino,
+        if (destinoDetalle != null) 'destino_detalle': destinoDetalle,
+        'estado': estado,
+        'canal_origen': canalOrigen,
+        'requiere_evaluacion': requiereEvaluacion,
+      };
 }
 
 class FichaCampoSocio {
@@ -143,6 +187,14 @@ class FichaCampoSocio {
         telefono: json['telefono']?.toString(),
         direccion: json['direccion']?.toString(),
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'nombre_completo': nombreCompleto,
+        'ci': ci,
+        if (telefono != null) 'telefono': telefono,
+        if (direccion != null) 'direccion': direccion,
+      };
 }
 
 class FichaCampoDatosDeclarados {
@@ -165,6 +217,13 @@ class FichaCampoDatosDeclarados {
         actividadEconomica: json['actividad_economica']?.toString(),
         fuenteIngresos: json['fuente_ingresos']?.toString(),
       );
+
+  Map<String, dynamic> toJson() => {
+        if (ingresoMensual != null) 'ingreso_mensual': ingresoMensual,
+        if (egresoMensual != null) 'egreso_mensual': egresoMensual,
+        if (actividadEconomica != null) 'actividad_economica': actividadEconomica,
+        if (fuenteIngresos != null) 'fuente_ingresos': fuenteIngresos,
+      };
 }
 
 class FotoEvaluacionCampo {
@@ -239,6 +298,22 @@ class EvaluacionCampoExistente {
                 FotoEvaluacionCampo.fromJson(e.cast<String, dynamic>()))
             .toList(),
       );
+
+  Map<String, dynamic> toJson() => {
+        if (id != null) 'id': id,
+        'ingreso_mensual': ingresoMensual,
+        'egreso_mensual': egresoMensual,
+        'cuota_deudas_mensual': cuotaDeudasMensual,
+        if (capacidadPago != null) 'capacidad_pago': capacidadPago,
+        'actividad_economica': actividadEconomica,
+        'fuente_ingresos': fuenteIngresos,
+        'antiguedad_laboral_meses': antiguedadLaboralMeses,
+        'calificacion_asfi': calificacionAsfi,
+        if (coordenadas != null) 'coordenadas': coordenadas,
+        if (observaciones != null) 'observaciones': observaciones,
+        if (fecha != null) 'fecha': fecha,
+        'fotografias': fotografias.map((f) => f.toJson()).toList(),
+      };
 }
 
 class CatalogosFichaCampo {
@@ -259,6 +334,11 @@ class CatalogosFichaCampo {
             .map((e) => e.toString())
             .toList(),
       );
+
+  Map<String, dynamic> toJson() => {
+        'fuentes_ingresos': fuentesIngresos,
+        'calificaciones_asfi': calificacionesAsfi,
+      };
 }
 
 class FichaCampo {
@@ -295,6 +375,15 @@ class FichaCampo {
       catalogos: CatalogosFichaCampo.fromJson(catMap.cast<String, dynamic>()),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'solicitud': solicitud.toJson(),
+        'socio': socio.toJson(),
+        if (datosDeclarados != null)
+          'datos_declarados': datosDeclarados!.toJson(),
+        if (evaluacion != null) 'evaluacion': evaluacion!.toJson(),
+        'catalogos': catalogos.toJson(),
+      };
 }
 
 class EvaluacionCampoForm {
@@ -362,6 +451,15 @@ class ScoringFactor {
         valor: _string(json['valor']),
         motivo: _string(json['motivo']),
       );
+
+  Map<String, dynamic> toJson() => {
+        'codigo': codigo,
+        'descripcion': descripcion,
+        'puntos': puntos,
+        'maximo': maximo,
+        'valor': valor,
+        'motivo': motivo,
+      };
 }
 
 class ScoringResultado {
@@ -422,6 +520,12 @@ class ScoringKnockout {
         descripcion: _string(json['descripcion']),
         efecto: _string(json['efecto']),
       );
+
+  Map<String, dynamic> toJson() => {
+        'codigo': codigo,
+        'descripcion': descripcion,
+        'efecto': efecto,
+      };
 }
 
 class SocioPrecalificacion {
@@ -456,6 +560,13 @@ class SocioPrecalificacion {
         nombre: _string(json['nombre']),
         apellido: _string(json['apellido']),
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'ci': ci,
+        'nombre': nombre,
+        'apellido': apellido,
+      };
 }
 
 class ProductoPrecalificacion {
@@ -513,6 +624,19 @@ class ProductoPrecalificacion {
       requiereGarantia: json['requiere_garantia'] == true,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'codigo': codigo,
+        'nombre': nombre,
+        'moneda': {'simbolo': monedaSimbolo},
+        'monto_min': montoMin,
+        'monto_max': montoMax,
+        'plazo_min_meses': plazoMinMeses,
+        'plazo_max_meses': plazoMaxMeses,
+        'tasa_interes_anual': tasaInteresAnual,
+        'requiere_garantia': requiereGarantia,
+      };
 }
 
 class PrecalificacionForm {
@@ -628,4 +752,30 @@ class PrecalificacionResultado {
       productoNombre: prodMap['nombre']?.toString(),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'precalificacion': precalificacion,
+        'score': score,
+        'dictamen': dictamen,
+        'factores': factores.map((f) => f.toJson()).toList(),
+        'knockouts': knockouts.map((k) => k.toJson()).toList(),
+        if (explicacion != null) 'explicacion': explicacion,
+        if (cuotaEstimada != null) 'cuota_estimada': cuotaEstimada,
+        if (relacionCuotaIngreso != null)
+          'relacion_cuota_ingreso': relacionCuotaIngreso,
+        if (probabilidadMora != null) 'probabilidad_mora': probabilidadMora,
+        if (nivelRiesgo != null) 'nivel_riesgo': nivelRiesgo,
+        if (versionModelo != null) 'version_modelo': versionModelo,
+        if (socioId != null || socioNombre != null || socioCi != null)
+          'socio': {
+            if (socioId != null) 'id': socioId,
+            if (socioNombre != null) 'nombre_completo': socioNombre,
+            if (socioCi != null) 'ci': socioCi,
+          },
+        if (productoId != null || productoNombre != null)
+          'producto': {
+            if (productoId != null) 'id': productoId,
+            if (productoNombre != null) 'nombre': productoNombre,
+          },
+      };
 }
