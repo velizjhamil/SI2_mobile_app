@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 import '../models/campo_model.dart';
+import '../models/sync_model.dart';
 import '../services/campo_hardware_service.dart';
 import '../services/campo_service.dart';
 import '../services/mock_auth_service.dart';
@@ -43,6 +44,7 @@ class _CampoHomeScreenState extends State<CampoHomeScreen>
 
   int _pendingCount = 0;
   int _conflictsCount = 0;
+  bool _hasCorruptNotice = false;
   Set<int> _pendingSolicitudIds = {};
   bool _syncing = false;
 
@@ -105,9 +107,13 @@ class _CampoHomeScreenState extends State<CampoHomeScreen>
 
   Future<void> _autoSync() async {
     if (_syncService == null) return;
-    await _syncService!.sync();
-    if (mounted) {
-      _refreshSyncStatus();
+    try {
+      await _syncService!.sync();
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        _refreshSyncStatus();
+      }
     }
   }
 
@@ -116,10 +122,12 @@ class _CampoHomeScreenState extends State<CampoHomeScreen>
     try {
       final queue = await _store!.getQueue();
       final conflicts = await _store!.getConflicts();
+      final corruptNotice = await _store!.hasCorruptNotice();
       if (!mounted) return;
       setState(() {
         _pendingCount = queue.length;
         _conflictsCount = conflicts.length;
+        _hasCorruptNotice = corruptNotice;
         _pendingSolicitudIds = queue
             .where((i) => i.solicitudId != null)
             .map((i) => i.solicitudId!)
@@ -131,23 +139,37 @@ class _CampoHomeScreenState extends State<CampoHomeScreen>
   Future<void> _manualSync() async {
     if (_syncService == null) return;
     setState(() => _syncing = true);
-    final result = await _syncService!.sync();
-    if (!mounted) return;
-    setState(() => _syncing = false);
-    await _refreshSyncStatus();
-    _load();
-    if (mounted) setState(() {});
+    SyncResult? result;
+    try {
+      result = await _syncService!.sync();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Error durante la sincronización. Intente nuevamente.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _syncing = false);
+        await _refreshSyncStatus();
+        _load();
+      }
+    }
 
-    final msg = result.isUnauthorized
-        ? 'Sesión expirada. Inicie sesión nuevamente.'
-        : result.isNetworkError
-            ? 'Sin conexión. Los elementos continúan en cola.'
-            : 'Sincronización completada: ${result.syncedCount} sincronizados, ${result.conflictsCount} conflictos.';
+    if (result != null && mounted) {
+      final msg = result.isUnauthorized
+          ? 'Sesión expirada. Inicie sesión nuevamente.'
+          : result.isNetworkError
+              ? 'Sin conexión. Los elementos continúan en cola.'
+              : 'Sincronización completada: ${result.syncedCount} sincronizados, ${result.conflictsCount} conflictos.';
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+    }
   }
 
   void _load() {
@@ -290,6 +312,41 @@ class _CampoHomeScreenState extends State<CampoHomeScreen>
       ),
       body: Column(
         children: [
+          if (_hasCorruptNotice)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: AppColors.error.withValues(alpha: 0.12),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.error,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Se encontró un archivo de sincronización dañado; se guardó una copia de respaldo',
+                      style: TextStyle(
+                        color: AppColors.error,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18, color: AppColors.error),
+                    tooltip: 'Cerrar aviso',
+                    onPressed: () async {
+                      await _store?.clearCorruptNotice();
+                      if (mounted) {
+                        setState(() => _hasCorruptNotice = false);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
           if (_service is SyncCampoService &&
               (_service as SyncCampoService).isWorklistOffline)
             OfflineBanner(

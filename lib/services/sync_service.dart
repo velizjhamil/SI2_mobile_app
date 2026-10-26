@@ -180,7 +180,10 @@ class SyncService {
         }
         if (item.kind == QueueItemKind.prequalification &&
             dynamicResult.value != null) {
-          await store.saveCompletedPrequalification(dynamicResult.value!);
+          final res = item.clientId != null
+              ? dynamicResult.value!.copyWith(clientId: item.clientId)
+              : dynamicResult.value!;
+          await store.saveCompletedPrequalification(res);
         }
         syncedCount++;
         continue;
@@ -199,9 +202,9 @@ class SyncService {
         );
       }
 
-      // 409 / 422 / 404 / 403 -> move to conflict list with server detail (server wins)
+      // 400 / 409 / 422 / 404 / 403 -> move to conflict list with server detail (server wins)
       final sc = dynamicResult.statusCode;
-      if (sc == 409 || sc == 422 || sc == 404 || sc == 403) {
+      if (sc == 400 || sc == 409 || sc == 422 || sc == 404 || sc == 403) {
         final conflict = SyncConflict(
           id: UuidGenerator.v4(),
           item: item,
@@ -233,7 +236,32 @@ class SyncService {
         );
       }
 
-      // Any other server error (e.g. 500) -> stays queued (never drop silently)
+      // 5xx / 429 / other retriable errors: increment attemptCount and lastError
+      final newAttemptCount = item.attemptCount + 1;
+      final updatedItem = item.copyWith(
+        attemptCount: newAttemptCount,
+        lastError: dynamicResult.error,
+      );
+
+      if (newAttemptCount >= 5) {
+        // Move to conflicts after 5 failed attempts
+        final conflict = SyncConflict(
+          id: UuidGenerator.v4(),
+          item: updatedItem,
+          error: dynamicResult.error ??
+              'Error del servidor tras $newAttemptCount intentos fallidos (${sc ?? 500})',
+          statusCode: sc ?? 500,
+          timestamp: store.now(),
+        );
+        await store.addConflict(conflict);
+        await store.removeQueueItem(item.id);
+        if (item.kind == QueueItemKind.evaluationSave &&
+            item.solicitudId != null) {
+          pendingEvalSolicitudIds.remove(item.solicitudId);
+        }
+      } else {
+        await store.updateQueueItem(updatedItem);
+      }
     }
 
     final remaining = await store.getQueue();

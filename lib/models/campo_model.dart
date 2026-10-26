@@ -697,6 +697,7 @@ class PrecalificacionResultado {
   final String? socioCi;
   final int? productoId;
   final String? productoNombre;
+  final String? clientId;
 
   const PrecalificacionResultado({
     required this.precalificacion,
@@ -715,7 +716,47 @@ class PrecalificacionResultado {
     this.socioCi,
     this.productoId,
     this.productoNombre,
+    this.clientId,
   });
+
+  PrecalificacionResultado copyWith({
+    bool? precalificacion,
+    int? score,
+    String? dictamen,
+    List<ScoringFactor>? factores,
+    List<ScoringKnockout>? knockouts,
+    String? explicacion,
+    String? cuotaEstimada,
+    String? relacionCuotaIngreso,
+    String? probabilidadMora,
+    String? nivelRiesgo,
+    String? versionModelo,
+    int? socioId,
+    String? socioNombre,
+    String? socioCi,
+    int? productoId,
+    String? productoNombre,
+    String? clientId,
+  }) =>
+      PrecalificacionResultado(
+        precalificacion: precalificacion ?? this.precalificacion,
+        score: score ?? this.score,
+        dictamen: dictamen ?? this.dictamen,
+        factores: factores ?? this.factores,
+        knockouts: knockouts ?? this.knockouts,
+        explicacion: explicacion ?? this.explicacion,
+        cuotaEstimada: cuotaEstimada ?? this.cuotaEstimada,
+        relacionCuotaIngreso: relacionCuotaIngreso ?? this.relacionCuotaIngreso,
+        probabilidadMora: probabilidadMora ?? this.probabilidadMora,
+        nivelRiesgo: nivelRiesgo ?? this.nivelRiesgo,
+        versionModelo: versionModelo ?? this.versionModelo,
+        socioId: socioId ?? this.socioId,
+        socioNombre: socioNombre ?? this.socioNombre,
+        socioCi: socioCi ?? this.socioCi,
+        productoId: productoId ?? this.productoId,
+        productoNombre: productoNombre ?? this.productoNombre,
+        clientId: clientId ?? this.clientId,
+      );
 
   bool get isAprobado => dictamen.toUpperCase() == 'APROBADO';
   bool get isRechazado => dictamen.toUpperCase() == 'RECHAZADO';
@@ -750,6 +791,7 @@ class PrecalificacionResultado {
       socioCi: socioMap['ci']?.toString(),
       productoId: prodMap['id'] != null ? _int(prodMap['id']) : null,
       productoNombre: prodMap['nombre']?.toString(),
+      clientId: json['client_id']?.toString(),
     );
   }
 
@@ -759,6 +801,7 @@ class PrecalificacionResultado {
         'dictamen': dictamen,
         'factores': factores.map((f) => f.toJson()).toList(),
         'knockouts': knockouts.map((k) => k.toJson()).toList(),
+        if (clientId != null) 'client_id': clientId,
         if (explicacion != null) 'explicacion': explicacion,
         if (cuotaEstimada != null) 'cuota_estimada': cuotaEstimada,
         if (relacionCuotaIngreso != null)

@@ -14,6 +14,7 @@ import 'package:forest_microfinance/services/campo_service.dart';
 import 'package:forest_microfinance/services/mock_auth_service.dart';
 import 'package:forest_microfinance/services/offline_store.dart';
 import 'package:forest_microfinance/services/sync_campo_service.dart';
+import 'package:forest_microfinance/services/sync_service.dart';
 import 'package:forest_microfinance/widgets/offline_banner.dart';
 
 Widget _wrap(Widget child) {
@@ -217,13 +218,25 @@ class InMemoryOfflineStore extends OfflineStore {
   }) : super(baseDirectory: Directory.systemTemp);
 
   @override
-  Future<void> saveWorklist(List<SolicitudResumenCampo> items) async {
-    _storage['worklist'] = CachedData(data: items, timestamp: now());
+  Future<void> saveWorklist(
+    List<SolicitudResumenCampo> items, {
+    String filterKey = 'TODOS',
+  }) async {
+    final key = filterKey.toUpperCase();
+    _storage['worklist_$key'] = CachedData(data: items, timestamp: now());
+    if (key == 'TODOS') {
+      _storage['worklist'] = CachedData(data: items, timestamp: now());
+    }
   }
 
   @override
-  Future<CachedData<List<SolicitudResumenCampo>>?> getWorklist() async {
-    return _storage['worklist'] as CachedData<List<SolicitudResumenCampo>>?;
+  Future<CachedData<List<SolicitudResumenCampo>>?> getWorklist({
+    String filterKey = 'TODOS',
+  }) async {
+    final key = filterKey.toUpperCase();
+    return (_storage['worklist_$key'] ??
+            (key == 'TODOS' ? _storage['worklist'] : null))
+        as CachedData<List<SolicitudResumenCampo>>?;
   }
 
   @override
@@ -315,6 +328,16 @@ class InMemoryOfflineStore extends OfflineStore {
     PrecalificacionResultado result,
   ) async {
     _completedPrequalifications.add(result);
+  }
+
+  bool simulatedCorruptNotice = false;
+
+  @override
+  Future<bool> hasCorruptNotice() async => simulatedCorruptNotice;
+
+  @override
+  Future<void> clearCorruptNotice() async {
+    simulatedCorruptNotice = false;
   }
 }
 
@@ -767,5 +790,87 @@ void main() {
       expect(find.text('Lucia Mendoza'), findsOneWidget);
       expect(find.text('APROBADO (875 pts)'), findsOneWidget);
     });
+
+    testWidgets(
+        'Follow-up 2: Manual sync exception resets _syncing, shows Spanish error, and leaves button enabled',
+        (tester) async {
+      _setLargeSurface(tester);
+
+      final store = InMemoryOfflineStore(
+        userId: 'officer_failing_sync',
+        now: () => testDate,
+      );
+
+      final inner = FakeOfflineCampoService();
+      await store.saveWorklist(inner.worklist);
+
+      final failingSyncService = _FailingSyncService(
+        campoService: inner,
+        store: store,
+      );
+
+      await tester.pumpWidget(
+        _wrap(
+          CampoHomeScreen(
+            service: inner,
+            store: store,
+            syncService: failingSyncService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap sync button
+      await tester.tap(find.byKey(const Key('campo_sync_btn')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // Error message shown in SnackBar
+      expect(find.textContaining('Error durante la sincronización'), findsOneWidget);
+
+      // Button is still present, enabled, and not stuck with spinner
+      final syncBtn = tester.widget<TextButton>(find.byKey(const Key('campo_sync_btn')));
+      expect(syncBtn.onPressed, isNotNull);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
+
+    testWidgets(
+        'Follow-up 3: CampoHomeScreen displays persistent notice when corrupt sync file was detected',
+        (tester) async {
+      _setLargeSurface(tester);
+
+      final store = InMemoryOfflineStore(
+        userId: 'officer_corrupt_ui',
+        now: () => testDate,
+      );
+      store.simulatedCorruptNotice = true;
+
+      final inner = FakeOfflineCampoService();
+      await store.saveWorklist(inner.worklist);
+
+      await tester.pumpWidget(
+        _wrap(
+          CampoHomeScreen(
+            service: inner,
+            store: store,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Se encontró un archivo de sincronización dañado; se guardó una copia de respaldo'),
+        findsOneWidget,
+      );
+    });
   });
+}
+
+class _FailingSyncService extends SyncService {
+  _FailingSyncService({required super.campoService, required super.store});
+
+  @override
+  Future<SyncResult> sync({http.Client? client}) async {
+    throw Exception('Simulated network crash');
+  }
 }

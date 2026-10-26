@@ -90,27 +90,57 @@ class OfflineStore {
       try {
         await file.rename(corruptFile.path);
       } catch (_) {}
-      throw FormatException(
-        'Archivo JSON corrupto en $relativePath. Se respaldó como ${corruptFile.path}. Error: $e',
-      );
+      try {
+        final noticeFile = File('${_userDir.path}/corrupt_notice.flag');
+        await noticeFile.writeAsString(corruptFile.path, flush: true);
+      } catch (_) {}
+      // Return null so callers continue with empty state without failing
+      return null;
+    }
+  }
+
+  Future<bool> hasCorruptNotice() async {
+    final noticeFile = File('${_userDir.path}/corrupt_notice.flag');
+    return noticeFile.existsSync();
+  }
+
+  Future<void> clearCorruptNotice() async {
+    final noticeFile = File('${_userDir.path}/corrupt_notice.flag');
+    if (noticeFile.existsSync()) {
+      try {
+        await noticeFile.delete();
+      } catch (_) {}
     }
   }
 
   // --- Read Cache ---
 
-  Future<void> saveWorklist(List<SolicitudResumenCampo> items) =>
+  Future<void> saveWorklist(
+    List<SolicitudResumenCampo> items, {
+    String filterKey = 'TODOS',
+  }) =>
       _lock.synchronized(() async {
-        await _writeJsonAtomic('cache/worklist.json', {
+        final key = filterKey.toUpperCase();
+        await _writeJsonAtomic('cache/worklist_$key.json', {
           'timestamp': now().toIso8601String(),
           'data': items.map((i) => i.toJson()).toList(),
         });
       });
 
-  Future<CachedData<List<SolicitudResumenCampo>>?> getWorklist() =>
+  Future<CachedData<List<SolicitudResumenCampo>>?> getWorklist({
+    String filterKey = 'TODOS',
+  }) =>
       _lock.synchronized(() async {
-        final json = await _readJson('cache/worklist.json');
+        final key = filterKey.toUpperCase();
+        var json = await _readJson('cache/worklist_$key.json');
+        if (json == null || json is! Map) {
+          if (key == 'TODOS') {
+            json = await _readJson('cache/worklist.json');
+          }
+        }
         if (json is! Map) return null;
-        final timestamp = DateTime.parse(json['timestamp'] as String);
+        final timestamp =
+            DateTime.tryParse(json['timestamp']?.toString() ?? '') ?? now();
         final list = (json['data'] as List? ?? [])
             .whereType<Map>()
             .map((e) =>
@@ -212,6 +242,47 @@ class OfflineStore {
           'queue.json',
           queue.map((i) => i.toJson()).toList(),
         );
+      });
+
+  Future<void> enqueueOrReplaceEvaluationSave(QueueItem item) =>
+      _lock.synchronized(() async {
+        final queue = await _getQueueInternal();
+        final existingIdx = queue.indexWhere((i) =>
+            i.kind == QueueItemKind.evaluationSave &&
+            i.solicitudId == item.solicitudId);
+        if (existingIdx != -1) {
+          queue[existingIdx] = item;
+        } else {
+          queue.add(item);
+        }
+        await _writeJsonAtomic(
+          'queue.json',
+          queue.map((i) => i.toJson()).toList(),
+        );
+      });
+
+  Future<void> removeEvaluationSavesForSolicitud(int solicitudId) =>
+      _lock.synchronized(() async {
+        final queue = await _getQueueInternal();
+        queue.removeWhere((i) =>
+            i.kind == QueueItemKind.evaluationSave &&
+            i.solicitudId == solicitudId);
+        await _writeJsonAtomic(
+          'queue.json',
+          queue.map((i) => i.toJson()).toList(),
+        );
+      });
+
+  Future<void> updateQueueItem(QueueItem item) => _lock.synchronized(() async {
+        final queue = await _getQueueInternal();
+        final idx = queue.indexWhere((i) => i.id == item.id);
+        if (idx != -1) {
+          queue[idx] = item;
+          await _writeJsonAtomic(
+            'queue.json',
+            queue.map((i) => i.toJson()).toList(),
+          );
+        }
       });
 
   Future<void> removeQueueItem(String itemId) => _lock.synchronized(() async {
@@ -342,6 +413,18 @@ class OfflineStore {
   ) =>
       _lock.synchronized(() async {
         final list = await _getCompletedPrequalificationsInternal();
+        if (result.clientId != null && result.clientId!.isNotEmpty) {
+          final existingIdx =
+              list.indexWhere((r) => r.clientId == result.clientId);
+          if (existingIdx != -1) {
+            list[existingIdx] = result;
+            await _writeJsonAtomic(
+              'precalificaciones_completadas.json',
+              list.map((r) => r.toJson()).toList(),
+            );
+            return;
+          }
+        }
         list.add(result);
         await _writeJsonAtomic(
           'precalificaciones_completadas.json',

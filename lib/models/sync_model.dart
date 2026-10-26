@@ -13,6 +13,8 @@ class QueueItem {
   final int? solicitudId;
   final DateTime createdAt;
   final Map<String, dynamic> payload;
+  final int attemptCount;
+  final String? lastError;
 
   const QueueItem({
     required this.id,
@@ -20,7 +22,28 @@ class QueueItem {
     this.solicitudId,
     required this.createdAt,
     required this.payload,
+    this.attemptCount = 0,
+    this.lastError,
   });
+
+  QueueItem copyWith({
+    String? id,
+    QueueItemKind? kind,
+    int? solicitudId,
+    DateTime? createdAt,
+    Map<String, dynamic>? payload,
+    int? attemptCount,
+    String? lastError,
+  }) =>
+      QueueItem(
+        id: id ?? this.id,
+        kind: kind ?? this.kind,
+        solicitudId: solicitudId ?? this.solicitudId,
+        createdAt: createdAt ?? this.createdAt,
+        payload: payload ?? this.payload,
+        attemptCount: attemptCount ?? this.attemptCount,
+        lastError: lastError ?? this.lastError,
+      );
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -28,6 +51,8 @@ class QueueItem {
         if (solicitudId != null) 'solicitud_id': solicitudId,
         'created_at': createdAt.toIso8601String(),
         'payload': payload,
+        'attempt_count': attemptCount,
+        if (lastError != null) 'last_error': lastError,
       };
 
   factory QueueItem.fromJson(Map<String, dynamic> json) {
@@ -40,6 +65,8 @@ class QueueItem {
       solicitudId: json['solicitud_id'] as int?,
       createdAt: DateTime.parse(json['created_at'] as String),
       payload: (json['payload'] as Map? ?? {}).cast<String, dynamic>(),
+      attemptCount: (json['attempt_count'] as num?)?.toInt() ?? 0,
+      lastError: json['last_error'] as String?,
     );
   }
 
@@ -49,15 +76,44 @@ class QueueItem {
             ? payload['evaluacion'] as Map
             : payload)
         .cast<String, dynamic>();
+
+    final ingreso = map['ingreso_mensual']?.toString();
+    final egreso = map['egreso_mensual']?.toString();
+    final cuota = map['cuota_deudas_mensual']?.toString();
+    final actividad = map['actividad_economica']?.toString();
+    final fuente = map['fuente_ingresos']?.toString();
+    final antiguedadRaw = map['antiguedad_laboral_meses'];
+    final calificacion = map['calificacion_asfi']?.toString();
+
+    if (ingreso == null ||
+        ingreso.trim().isEmpty ||
+        egreso == null ||
+        egreso.trim().isEmpty ||
+        cuota == null ||
+        cuota.trim().isEmpty ||
+        actividad == null ||
+        actividad.trim().isEmpty ||
+        fuente == null ||
+        fuente.trim().isEmpty ||
+        antiguedadRaw == null ||
+        calificacion == null ||
+        calificacion.trim().isEmpty) {
+      return null;
+    }
+
+    final antiguedad = int.tryParse(antiguedadRaw.toString());
+    if (antiguedad == null || antiguedad < 0) {
+      return null;
+    }
+
     return EvaluacionCampoForm(
-      ingresoMensual: map['ingreso_mensual']?.toString() ?? '0.00',
-      egresoMensual: map['egreso_mensual']?.toString() ?? '0.00',
-      cuotaDeudasMensual: map['cuota_deudas_mensual']?.toString() ?? '0.00',
-      actividadEconomica: map['actividad_economica']?.toString() ?? '',
-      fuenteIngresos: map['fuente_ingresos']?.toString() ?? '',
-      antiguedadLaboralMeses:
-          int.tryParse(map['antiguedad_laboral_meses']?.toString() ?? '') ?? 0,
-      calificacionAsfi: map['calificacion_asfi']?.toString() ?? 'A',
+      ingresoMensual: ingreso.trim(),
+      egresoMensual: egreso.trim(),
+      cuotaDeudasMensual: cuota.trim(),
+      actividadEconomica: actividad.trim(),
+      fuenteIngresos: fuente.trim(),
+      antiguedadLaboralMeses: antiguedad,
+      calificacionAsfi: calificacion.trim(),
       coordenadas: map['coordenadas']?.toString(),
       observaciones: map['observaciones']?.toString(),
     );

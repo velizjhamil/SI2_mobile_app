@@ -832,7 +832,7 @@ void main() {
       expect(await store.getQueue(), isEmpty);
     });
 
-    test('Advisory 5: Corrupt/partial JSON moves file aside to .corrupt-<timestamp> and throws', () async {
+    test('Advisory 5 / Follow-up 3: Corrupt/partial JSON moves file aside to .corrupt-<timestamp> and continues with empty queue', () async {
       final store = OfflineStore(
         baseDirectory: tempDir,
         userId: 'officer_corrupt',
@@ -845,11 +845,9 @@ void main() {
       final queueFile = File('${userDir.path}/queue.json');
       await queueFile.writeAsString('{"malformed": [truncated json');
 
-      // getQueue should move aside and throw FormatException
-      await expectLater(
-        store.getQueue(),
-        throwsA(isA<FormatException>()),
-      );
+      // getQueue moves file aside and recovers with empty queue
+      final queue = await store.getQueue();
+      expect(queue, isEmpty);
 
       // Original queue.json no longer exists (moved aside)
       expect(queueFile.existsSync(), isFalse);
@@ -960,27 +958,529 @@ void main() {
       expect(File(photoPath).existsSync(), isFalse);
     });
 
-    test('Advisory 8: CampoService only maps network exceptions to isNetworkError', () async {
+    test('Follow-up 1: R3-stale-eval-replay - Online eval save removes older queued eval for same solicitud', () async {
+      final store = OfflineStore(
+        baseDirectory: tempDir,
+        userId: 'officer_stale_online',
+        now: mockClock,
+      );
+
+      const olderForm = EvaluacionCampoForm(
+        ingresoMensual: '1000.00',
+        egresoMensual: '500.00',
+        cuotaDeudasMensual: '100.00',
+        actividadEconomica: 'Comercio',
+        fuenteIngresos: 'NEGOCIO_PROPIO',
+        antiguedadLaboralMeses: 12,
+        calificacionAsfi: 'A',
+      );
+
+      // Enqueue older evaluation for solicitud 10
+      await store.enqueue(QueueItem(
+        id: 'older-eval-10',
+        kind: QueueItemKind.evaluationSave,
+        solicitudId: 10,
+        createdAt: testTime,
+        payload: olderForm.toJson(),
+      ));
+      expect((await store.getQueue()).length, 1);
+
+      final mockClient = MockClient((request) async {
+        if (request.url.path.contains('/solicitudes/10') && request.method == 'PUT') {
+          return http.Response(
+            jsonEncode({
+              'id': 10,
+              'numero_solicitud': 'SOL-10',
+              'fecha_solicitud': '2026-10-26',
+              'estado': 'EVALUACION_CAMPO',
+              'monto': '10000.00',
+              'plazo_meses': 12,
+              'destino': 'Capital de trabajo',
+              'canal_origen': 'MOVIL',
+              'requiere_evaluacion': false,
+            }),
+            200,
+          );
+        }
+        return http.Response('Not found', 404);
+      });
+
+      final syncCampoService = SyncCampoService(
+        innerService: CampoService(),
+        store: store,
+      );
+
+      const newerForm = EvaluacionCampoForm(
+        ingresoMensual: '2500.00',
+        egresoMensual: '800.00',
+        cuotaDeudasMensual: '200.00',
+        actividadEconomica: 'Comercio Mayorista',
+        fuenteIngresos: 'NEGOCIO_PROPIO',
+        antiguedadLaboralMeses: 24,
+        calificacionAsfi: 'A',
+      );
+
+      final res = await syncCampoService.guardarEvaluacion(10, newerForm, client: mockClient);
+      expect(res.success, isTrue);
+
+      // Older queued eval for solicitud 10 must be gone
+      final queueAfter = await store.getQueue();
+      expect(
+        queueAfter.where((i) => i.kind == QueueItemKind.evaluationSave && i.solicitudId == 10),
+        isEmpty,
+      );
+    });
+
+    test('Follow-up 1: R3-stale-eval-replay - Offline eval enqueue replaces existing queued eval keeping FIFO position', () async {
+      final store = OfflineStore(
+        baseDirectory: tempDir,
+        userId: 'officer_stale_replace',
+        now: mockClock,
+      );
+
+      final inner = MockClient((request) async {
+        throw const SocketException('No internet');
+      });
+
+      final syncCampoService = SyncCampoService(
+        innerService: CampoService(),
+        store: store,
+      );
+
+      // 1. Enqueue eval for solicitud 10
+      const formV1 = EvaluacionCampoForm(
+        ingresoMensual: '1000.00',
+        egresoMensual: '500.00',
+        cuotaDeudasMensual: '0.00',
+        actividadEconomica: 'Artesanía',
+        fuenteIngresos: 'INDEPENDIENTE',
+        antiguedadLaboralMeses: 6,
+        calificacionAsfi: 'A',
+      );
+      await syncCampoService.guardarEvaluacion(10, formV1, client: inner);
+
+      // 2. Enqueue photo for solicitud 20
+      final photoPath = await store.savePhotoBytes('client-uuid-20', [1, 2, 3], 'negocio.jpg');
+      await store.enqueue(QueueItem(
+        id: 'photo-20',
+        kind: QueueItemKind.photoUpload,
+        solicitudId: 20,
+        createdAt: testTime,
+        payload: {
+          'client_id': 'client-uuid-20',
+          'photo_file_path': photoPath,
+          'filename': 'negocio.jpg',
+        },
+      ));
+
+      expect((await store.getQueue()).length, 2);
+
+      // 3. Enqueue updated eval for solicitud 10 while offline
+      const formV2 = EvaluacionCampoForm(
+        ingresoMensual: '3000.00',
+        egresoMensual: '1200.00',
+        cuotaDeudasMensual: '100.00',
+        actividadEconomica: 'Artesanía Fina',
+        fuenteIngresos: 'INDEPENDIENTE',
+        antiguedadLaboralMeses: 18,
+        calificacionAsfi: 'A',
+      );
+      await syncCampoService.guardarEvaluacion(10, formV2, client: inner);
+
+      // Queue length must still be 2 (replaced, not duplicated)
+      final queue = await store.getQueue();
+      expect(queue.length, 2);
+
+      // Position 0 must still be solicitud 10, but with updated formV2 content
+      expect(queue[0].kind, QueueItemKind.evaluationSave);
+      expect(queue[0].solicitudId, 10);
+      expect(queue[0].evaluacionForm?.ingresoMensual, '3000.00');
+      expect(queue[0].evaluacionForm?.actividadEconomica, 'Artesanía Fina');
+
+      // Position 1 must still be photo-20
+      expect(queue[1].id, 'photo-20');
+      expect(queue[1].solicitudId, 20);
+    });
+
+    test('Follow-up 3: R3-corrupt-queue-loss - Corrupt file is moved aside, empty queue continues, enqueue succeeds and flags notice', () async {
+      final store = OfflineStore(
+        baseDirectory: tempDir,
+        userId: 'officer_corrupt_recovery',
+        now: mockClock,
+      );
+
+      final userDir = Directory('${tempDir.path}/offline_store/officer_corrupt_recovery');
+      userDir.createSync(recursive: true);
+      final queueFile = File('${userDir.path}/queue.json');
+      await queueFile.writeAsString('{"corrupted_data": [unclosed');
+
+      final newItem = QueueItem(
+        id: 'new-valid-item',
+        kind: QueueItemKind.photoDelete,
+        solicitudId: 5,
+        createdAt: testTime,
+        payload: {'foto_id': '5/foto.jpg'},
+      );
+
+      // Enqueue must succeed instead of throwing FormatException
+      await store.enqueue(newItem);
+
+      // Queue contains the newly enqueued item
+      final queue = await store.getQueue();
+      expect(queue.length, 1);
+      expect(queue.first.id, 'new-valid-item');
+
+      // Backup file exists
+      final corruptBackups = userDir.listSync().where((f) => f.path.contains('queue.json.corrupt-')).toList();
+      expect(corruptBackups.length, 1);
+
+      // Persistent corrupt notice flag exists
+      expect(await store.hasCorruptNotice(), isTrue);
+    });
+
+    test('Follow-up 4: R3-malformed-eval-defaults - evaluacionForm returns null when required fields missing and routes to conflict', () async {
+      final store = OfflineStore(
+        baseDirectory: tempDir,
+        userId: 'officer_malformed_eval',
+        now: mockClock,
+      );
+
+      // Missing required fields (e.g. no actividad_economica, no calificacion_asfi)
+      final incompleteItem = QueueItem(
+        id: 'incomplete-eval-item',
+        kind: QueueItemKind.evaluationSave,
+        solicitudId: 15,
+        createdAt: testTime,
+        payload: {
+          'ingreso_mensual': '1500.00',
+          // missing egreso_mensual, actividad_economica, fuente_ingresos, antiguedad_laboral_meses, calificacion_asfi
+        },
+      );
+
+      expect(incompleteItem.evaluacionForm, isNull);
+
+      await store.enqueue(incompleteItem);
+
+      final syncService = SyncService(
+        campoService: CampoService(),
+        store: store,
+      );
+
+      final result = await syncService.sync();
+      expect(result.conflictsCount, 1);
+      expect(await store.getQueue(), isEmpty);
+
+      final conflicts = await store.getConflicts();
+      expect(conflicts.length, 1);
+      expect(conflicts.first.statusCode, 422);
+      expect(conflicts.first.error, contains('malformado'));
+    });
+
+    test('Follow-up 5: R4-5xx-retry-forever - 5xx increments attemptCount, moves to conflict after 5, and doesn\'t block unrelated solicitudes', () async {
+      final store = OfflineStore(
+        baseDirectory: tempDir,
+        userId: 'officer_5xx_retry',
+        now: mockClock,
+      );
+
+      const validForm = EvaluacionCampoForm(
+        ingresoMensual: '2000.00',
+        egresoMensual: '1000.00',
+        cuotaDeudasMensual: '0.00',
+        actividadEconomica: 'Comercio',
+        fuenteIngresos: 'INDEPENDIENTE',
+        antiguedadLaboralMeses: 12,
+        calificacionAsfi: 'A',
+      );
+
+      final item10 = QueueItem(
+        id: 'eval-10',
+        kind: QueueItemKind.evaluationSave,
+        solicitudId: 10,
+        createdAt: testTime,
+        payload: validForm.toJson(),
+      );
+
+      final item20 = QueueItem(
+        id: 'eval-20',
+        kind: QueueItemKind.evaluationSave,
+        solicitudId: 20,
+        createdAt: testTime,
+        payload: validForm.toJson(),
+      );
+
+      await store.saveQueue([item10, item20]);
+
+      final mockClient = MockClient((request) async {
+        if (request.url.path.contains('/solicitudes/10')) {
+          return http.Response(jsonEncode({'detail': 'Internal Server Error'}), 500);
+        }
+        if (request.url.path.contains('/solicitudes/20')) {
+          return http.Response(
+            jsonEncode({
+              'id': 20,
+              'numero_solicitud': 'SOL-20',
+              'fecha_solicitud': '2026-10-26',
+              'estado': 'EVALUACION_CAMPO',
+              'monto': '12000.00',
+              'plazo_meses': 12,
+              'destino': 'Comercio',
+              'canal_origen': 'MOVIL',
+              'requiere_evaluacion': false,
+            }),
+            200,
+          );
+        }
+        return http.Response('Not found', 404);
+      });
+
+      final syncService = SyncService(
+        campoService: CampoService(),
+        store: store,
+      );
+
+      // Attempt 1: solicitud 20 succeeds, solicitud 10 increments attemptCount
+      final res1 = await syncService.sync(client: mockClient);
+      expect(res1.syncedCount, 1); // Solicitud 20 was NOT blocked!
+      var queue = await store.getQueue();
+      expect(queue.length, 1);
+      expect(queue.first.solicitudId, 10);
+      expect(queue.first.attemptCount, 1);
+
+      // Attempts 2, 3, 4:
+      for (int i = 2; i <= 4; i++) {
+        await syncService.sync(client: mockClient);
+        queue = await store.getQueue();
+        expect(queue.length, 1);
+        expect(queue.first.attemptCount, i);
+      }
+
+      // Attempt 5: fails over to conflicts!
+      await syncService.sync(client: mockClient);
+      expect(await store.getQueue(), isEmpty);
+      final conflicts = await store.getConflicts();
+      expect(conflicts.length, 1);
+      expect(conflicts.first.statusCode, 500);
+      expect(conflicts.first.item.attemptCount, 5);
+      expect(conflicts.first.error, contains('Internal Server Error'));
+    });
+
+    test('Follow-up 5: R4-5xx-retry-forever - 400 validation error goes straight to conflicts without retry', () async {
+      final store = OfflineStore(
+        baseDirectory: tempDir,
+        userId: 'officer_400_direct',
+        now: mockClock,
+      );
+
+      const form = EvaluacionCampoForm(
+        ingresoMensual: '2000.00',
+        egresoMensual: '1000.00',
+        cuotaDeudasMensual: '0.00',
+        actividadEconomica: 'Comercio',
+        fuenteIngresos: 'INDEPENDIENTE',
+        antiguedadLaboralMeses: 12,
+        calificacionAsfi: 'A',
+      );
+
+      await store.enqueue(QueueItem(
+        id: 'eval-400',
+        kind: QueueItemKind.evaluationSave,
+        solicitudId: 30,
+        createdAt: testTime,
+        payload: form.toJson(),
+      ));
+
+      final mockClient = MockClient((request) async {
+        return http.Response(jsonEncode({'detail': 'Monto excede límite'}), 400);
+      });
+
+      final syncService = SyncService(
+        campoService: CampoService(),
+        store: store,
+      );
+
+      await syncService.sync(client: mockClient);
+      expect(await store.getQueue(), isEmpty);
+      final conflicts = await store.getConflicts();
+      expect(conflicts.length, 1);
+      expect(conflicts.first.statusCode, 400);
+      expect(conflicts.first.error, contains('Monto excede límite'));
+    });
+
+    test('Follow-up 6: R3-network-classification - HandshakeException, HttpException, TlsException are network errors', () async {
       final service = CampoService();
 
-      // FormatException / non-network exception during processing
-      final clientCorrupt = MockClient((request) async {
-        throw const FormatException('Formato JSON inválido');
+      // HandshakeException
+      final clientHandshake = MockClient((request) async {
+        throw const HandshakeException('Handshake failure');
+      });
+      final resHandshake = await service.getWorklist(client: clientHandshake);
+      expect(resHandshake.success, isFalse);
+      expect(resHandshake.isNetworkError, isTrue);
+
+      // HttpException
+      final clientHttp = MockClient((request) async {
+        throw const HttpException('Connection closed');
+      });
+      final resHttp = await service.getWorklist(client: clientHttp);
+      expect(resHttp.success, isFalse);
+      expect(resHttp.isNetworkError, isTrue);
+
+      // TlsException
+      final clientTls = MockClient((request) async {
+        throw const TlsException('TLS error');
+      });
+      final resTls = await service.getWorklist(client: clientTls);
+      expect(resTls.success, isFalse);
+      expect(resTls.isNetworkError, isTrue);
+    });
+
+    test('Follow-up 6: R1-raw-exception-text-ui - Generic Spanish message on unexpected exception without raw string', () async {
+      final service = CampoService();
+
+      final clientBug = MockClient((request) async {
+        throw StateError('CRITICAL_INTERNAL_DB_PASSWORD_XYZ');
       });
 
-      // A request that fails parsing non-JSON
-      final result1 = await service.getWorklist(client: clientCorrupt);
-      expect(result1.success, isFalse);
-      expect(result1.isNetworkError, isFalse);
+      final res = await service.getWorklist(client: clientBug);
+      expect(res.success, isFalse);
+      expect(res.isNetworkError, isFalse);
+      expect(res.error, 'Ocurrió un error inesperado. Intente nuevamente.');
+      expect(res.error, isNot(contains('CRITICAL_INTERNAL_DB_PASSWORD_XYZ')));
+    });
 
-      // Network exception (SocketException)
-      final clientNetwork = MockClient((request) async {
-        throw const SocketException('Network is unreachable');
+    test('Follow-up 7: R4-precal-replay-duplicate - Precal queue items have client UUID and dedupe completed list on replay', () async {
+      final store = OfflineStore(
+        baseDirectory: tempDir,
+        userId: 'officer_precal_dedupe',
+        now: mockClock,
+      );
+
+      const form = PrecalificacionForm(
+        socioId: 1,
+        productoId: 2,
+        monto: '5000.00',
+        plazoMeses: 12,
+        ingresoMensual: '3000.00',
+        egresoMensual: '1000.00',
+        cuotaDeudasMensual: '0.00',
+        antiguedadLaboralMeses: 24,
+      );
+
+      final innerClient = MockClient((request) async {
+        throw const SocketException('offline');
       });
 
-      final result2 = await service.getWorklist(client: clientNetwork);
-      expect(result2.success, isFalse);
-      expect(result2.isNetworkError, isTrue);
+      final syncCampoService = SyncCampoService(
+        innerService: CampoService(),
+        store: store,
+      );
+
+      // Enqueue offline: must have client_id
+      await syncCampoService.precalificar(form, client: innerClient);
+      final queue = await store.getQueue();
+      expect(queue.length, 1);
+      final clientId = queue.first.clientId;
+      expect(clientId, isNotNull);
+      expect(clientId!.isNotEmpty, isTrue);
+
+      final serverClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'precalificacion': true,
+            'score': 850,
+            'dictamen': 'APROBADO',
+            'factores': [],
+            'knockouts': [],
+            'socio': {'id': 1, 'nombre_completo': 'Ana Maria', 'ci': '1122334'},
+            'producto': {'id': 2, 'nombre': 'Microcrédito'},
+          }),
+          200,
+        );
+      });
+
+      final syncService = SyncService(
+        campoService: CampoService(),
+        store: store,
+      );
+
+      // Pass 1: synced and saved
+      await syncService.sync(client: serverClient);
+      var completed = await store.getCompletedPrequalifications();
+      expect(completed.length, 1);
+      expect(completed.first.clientId, clientId);
+
+      // Replay / re-save with same clientId does NOT create a duplicate
+      await store.saveCompletedPrequalification(completed.first);
+      completed = await store.getCompletedPrequalifications();
+      expect(completed.length, 1);
+    });
+
+    test('Follow-up 8: R3-worklist-cache-filter - Cache per canal filter key and offline mode respects filter', () async {
+      final store = OfflineStore(
+        baseDirectory: tempDir,
+        userId: 'officer_cache_filter',
+        now: mockClock,
+      );
+
+      final innerClient = MockClient((request) async {
+        final canal = request.url.queryParameters['canal_origen'];
+        if (canal == 'MOVIL') {
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 101,
+                'numero_solicitud': 'SOL-101',
+                'fecha_solicitud': '2026-10-26',
+                'estado': 'PENDIENTE_EVALUACION',
+                'socio': {'id': 1, 'nombre': 'Mario', 'apellido': 'Gomez', 'ci': '123'},
+                'producto': {'id': 1, 'nombre': 'Microcrédito'},
+                'monto': '5000.00',
+                'plazo_meses': 12,
+                'destino': 'Comercio',
+                'canal_origen': 'MOVIL',
+                'requiere_evaluacion': true,
+              }
+            ]),
+            200,
+          );
+        }
+        return http.Response(jsonEncode([]), 200);
+      });
+
+      final syncCampoService = SyncCampoService(
+        innerService: CampoService(),
+        store: store,
+      );
+
+      // 1. Fetch MOVIL online -> cached under MOVIL
+      final resOnline = await syncCampoService.getWorklist(
+        canalOrigen: 'MOVIL',
+        client: innerClient,
+      );
+      expect(resOnline.success, isTrue);
+      expect(resOnline.value?.length, 1);
+
+      // 2. Offline: Fetch MOVIL -> returns cached MOVIL
+      final offlineClient = MockClient((request) async {
+        throw const SocketException('No network');
+      });
+
+      final resOfflineMovil = await syncCampoService.getWorklist(
+        canalOrigen: 'MOVIL',
+        client: offlineClient,
+      );
+      expect(resOfflineMovil.success, isTrue);
+      expect(resOfflineMovil.value?.length, 1);
+      expect(resOfflineMovil.value?.first.id, 101);
+
+      // 3. Offline: Fetch VENTANILLA -> no cache for VENTANILLA, returns explicit message
+      final resOfflineVentanilla = await syncCampoService.getWorklist(
+        canalOrigen: 'VENTANILLA',
+        client: offlineClient,
+      );
+      expect(resOfflineVentanilla.success, isFalse);
+      expect(resOfflineVentanilla.error, contains('No hay datos guardados para este filtro'));
     });
   });
 }

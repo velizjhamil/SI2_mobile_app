@@ -43,6 +43,11 @@ class SyncCampoService extends CampoService {
     String? canalOrigen,
     http.Client? client,
   }) async {
+    final filterKey =
+        (canalOrigen == null || canalOrigen.isEmpty || canalOrigen == 'TODOS')
+            ? 'TODOS'
+            : canalOrigen.toUpperCase();
+
     final result = await innerService.getWorklist(
       requiereEvaluacion: requiereEvaluacion,
       canalOrigen: canalOrigen,
@@ -52,22 +57,23 @@ class SyncCampoService extends CampoService {
     if (result.success && result.value != null) {
       isWorklistOffline = false;
       lastWorklistCacheTime = null;
-      await store.saveWorklist(result.value!);
+      await store.saveWorklist(result.value!, filterKey: filterKey);
       return result;
     }
 
     if (result.isNetworkError) {
-      final cached = await store.getWorklist();
+      final cached = await store.getWorklist(filterKey: filterKey);
       if (cached != null) {
         isWorklistOffline = true;
         lastWorklistCacheTime = cached.timestamp;
-        var items = cached.data;
-        if (canalOrigen != null &&
-            canalOrigen.isNotEmpty &&
-            canalOrigen != 'TODOS') {
-          items = items.where((i) => i.canalOrigen == canalOrigen).toList();
-        }
-        return CampoResult.success(items);
+        return CampoResult.success(cached.data);
+      } else {
+        isWorklistOffline = true;
+        lastWorklistCacheTime = null;
+        return const CampoResult.failure(
+          'No hay datos guardados para este filtro en modo sin conexión.',
+          isNetworkError: true,
+        );
       }
     }
 
@@ -164,6 +170,7 @@ class SyncCampoService extends CampoService {
     );
 
     if (result.success) {
+      await store.removeEvaluationSavesForSolicitud(solicitudId);
       unawaited(syncService.sync(client: client));
       return result;
     }
@@ -176,7 +183,7 @@ class SyncCampoService extends CampoService {
         createdAt: store.now(),
         payload: form.toJson(),
       );
-      await store.enqueue(item);
+      await store.enqueueOrReplaceEvaluationSave(item);
       return const CampoResult.failure(
         'Sin conexión. Evaluación en cola (Pendiente de sincronizar).',
         isNetworkError: true,
@@ -280,11 +287,14 @@ class SyncCampoService extends CampoService {
     }
 
     if (result.isNetworkError) {
+      final clientId = UuidGenerator.v4();
+      final payload = Map<String, dynamic>.from(form.toJson());
+      payload['client_id'] = clientId;
       final item = QueueItem(
         id: UuidGenerator.v4(),
         kind: QueueItemKind.prequalification,
         createdAt: store.now(),
-        payload: form.toJson(),
+        payload: payload,
       );
       await store.enqueue(item);
       return const CampoResult.failure(

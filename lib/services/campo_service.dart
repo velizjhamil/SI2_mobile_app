@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/campo_model.dart';
@@ -281,9 +282,22 @@ class CampoService {
       return const CampoResult.networkError(
         'No se pudo conectar con el servidor. Verifique su conexión.',
       );
+    } on HandshakeException {
+      return const CampoResult.networkError(
+        'Error de enlace seguro (TLS/Handshake). Verifique su conexión.',
+      );
+    } on HttpException {
+      return const CampoResult.networkError(
+        'Error de transporte HTTP. Verifique su conexión.',
+      );
+    } on TlsException {
+      return const CampoResult.networkError(
+        'Error de seguridad TLS. Verifique su conexión.',
+      );
     } catch (e) {
-      return CampoResult.failure(
-        'Error inesperado: $e',
+      debugPrint('CampoService unexpected error: $e');
+      return const CampoResult.failure(
+        'Ocurrió un error inesperado. Intente nuevamente.',
         isNetworkError: false,
       );
     } finally {
@@ -396,9 +410,22 @@ class CampoService {
       return const CampoResult.networkError(
         'No se pudo conectar con el servidor. Verifique su conexión.',
       );
+    } on HandshakeException {
+      return const CampoResult.networkError(
+        'Error de enlace seguro (TLS/Handshake). Verifique su conexión.',
+      );
+    } on HttpException {
+      return const CampoResult.networkError(
+        'Error de transporte HTTP. Verifique su conexión.',
+      );
+    } on TlsException {
+      return const CampoResult.networkError(
+        'Error de seguridad TLS. Verifique su conexión.',
+      );
     } catch (e) {
-      return CampoResult.failure(
-        'Error inesperado: $e',
+      debugPrint('CampoService unexpected error: $e');
+      return const CampoResult.failure(
+        'Ocurrió un error inesperado. Intente nuevamente.',
         isNetworkError: false,
       );
     } finally {
