@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/socio_model.dart';
 import '../models/comprobante_model.dart';
+import 'demo_mode.dart';
 import 'mock_auth_service.dart';
 import 'session_manager.dart';
 
@@ -29,6 +30,11 @@ class SocioService {
     int offset = 0,
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(
+        await DemoMode.socio.extracto(accountId, from: from, to: to),
+      );
+    }
     final query = <String, String>{
       if (from != null) 'desde': from,
       if (to != null) 'hasta': to,
@@ -40,18 +46,30 @@ class SocioService {
   }
 
   Future<SocioResult<List<SocioCredit>>> credits({http.Client? client}) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.credits());
+    }
     return _getList('/socio/creditos', SocioCredit.fromJson, client);
   }
 
   Future<SocioResult<Map<String, dynamic>>> debt(int creditId,
-          {http.Client? client}) =>
-      _getMap('/socio/creditos/$creditId/deuda', client);
+          {http.Client? client}) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.debt(creditId));
+    }
+    return _getMap('/socio/creditos/$creditId/deuda', client);
+  }
 
   Future<SocioResult<CreditPayment>> payCredit(
     int creditId,
     int savingsAccountId, {
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.failure(
+        'Pago de cuotas no disponible en modo demo.',
+      );
+    }
     final result = await _request(
       'POST',
       '/socio/creditos/$creditId/pagos',
@@ -70,30 +88,61 @@ class SocioService {
   Future<SocioResult<List<Map<String, dynamic>>>> paymentHistory(
     int creditId, {
     http.Client? client,
-  }) =>
-      _getMapList('/socio/creditos/$creditId/pagos', client: client);
+  }) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.paymentHistory(creditId));
+    }
+    return _getMapList('/socio/creditos/$creditId/pagos', client: client);
+  }
 
   Future<SocioResult<CreditSchedule>> creditSchedule(
     int creditId, {
     http.Client? client,
-  }) =>
-      _get('/socio/creditos/$creditId/cronograma', null,
-          CreditSchedule.fromJson, client);
+  }) async {
+    if (DemoMode.enabled) {
+      final schedule = await DemoMode.socio.creditSchedule(creditId);
+      return schedule != null
+          ? SocioResult.success(schedule)
+          : const SocioResult.failure('Crédito no encontrado en modo demo.');
+    }
+    return _get('/socio/creditos/$creditId/cronograma', null,
+        CreditSchedule.fromJson, client);
+  }
 
-  Future<SocioResult<List<Dpf>>> dpfs({http.Client? client}) =>
-      _getList('/socio/dpf', Dpf.fromJson, client);
+  Future<SocioResult<List<Dpf>>> dpfs({http.Client? client}) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.dpfs());
+    }
+    return _getList('/socio/dpf', Dpf.fromJson, client);
+  }
 
-  Future<SocioResult<Dpf>> dpfDetail(int dpfId, {http.Client? client}) =>
-      _get('/socio/dpf/$dpfId', null, Dpf.fromJson, client);
+  Future<SocioResult<Dpf>> dpfDetail(int dpfId, {http.Client? client}) async {
+    if (DemoMode.enabled) {
+      final dpf = await DemoMode.socio.dpfDetail(dpfId);
+      return dpf != null
+          ? SocioResult.success(dpf)
+          : const SocioResult.failure('DPF no encontrado en modo demo.');
+    }
+    return _get('/socio/dpf/$dpfId', null, Dpf.fromJson, client);
+  }
 
-  Future<SocioResult<List<RecreditOffer>>> offers({http.Client? client}) =>
-      _getList('/socio/recreditos', RecreditOffer.fromJson, client);
+  Future<SocioResult<List<RecreditOffer>>> offers({http.Client? client}) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.offers());
+    }
+    return _getList('/socio/recreditos', RecreditOffer.fromJson, client);
+  }
 
   Future<SocioResult<Map<String, dynamic>>> acceptOffer(
     int offerId, {
     int? termMonths,
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.failure(
+        'Recreditaje no disponible en modo demo.',
+      );
+    }
     final result = await _request(
       'POST',
       '/socio/recreditos/$offerId/aceptar',
@@ -106,21 +155,43 @@ class SocioService {
   Future<SocioResult<Map<String, dynamic>>> discardOffer(
     int offerId, {
     http.Client? client,
-  }) =>
-      _request('POST', '/socio/recreditos/$offerId/descartar', client: client);
+  }) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.failure(
+        'Recreditaje no disponible en modo demo.',
+      );
+    }
+    return _request('POST', '/socio/recreditos/$offerId/descartar', client: client);
+  }
 
   Future<SocioResult<List<ProductoCreditoSocio>>> creditProducts({
     http.Client? client,
-  }) =>
-      _getList('/socio/productos-credito', ProductoCreditoSocio.fromJson, client);
+  }) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.creditProducts());
+    }
+    return _getList('/socio/productos-credito', ProductoCreditoSocio.fromJson, client);
+  }
 
   Future<SocioResult<SimulacionCredito>> simulateCredit({
     required int productId,
     required String amount,
     required int termMonths,
     http.Client? client,
-  }) =>
-      _get(
+  }) async {
+    if (DemoMode.enabled) {
+      final simulacion = await DemoMode.socio.simulateCredit(
+        productId: productId,
+        amount: amount,
+        termMonths: termMonths,
+      );
+      return simulacion != null
+          ? SocioResult.success(simulacion)
+          : const SocioResult.failure(
+              'Producto no encontrado en modo demo.',
+            );
+    }
+    return _get(
         '/socio/creditos/simulacion',
         {
           'producto_id': '$productId',
@@ -130,6 +201,7 @@ class SocioService {
         SimulacionCredito.fromJson,
         client,
       );
+  }
 
   Future<SocioResult<SolicitudCreditoItem>> createCreditRequest({
     required int productId,
@@ -140,6 +212,11 @@ class SocioService {
     required DatosDeclarados declaredData,
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.failure(
+        'Solicitud de crédito no disponible en modo demo.',
+      );
+    }
     final body = {
       'producto_id': productId,
       'monto': amount,
@@ -162,21 +239,36 @@ class SocioService {
 
   Future<SocioResult<List<SolicitudCreditoItem>>> creditRequests({
     http.Client? client,
-  }) =>
-      _getList('/socio/solicitudes', SolicitudCreditoItem.fromJson, client);
+  }) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.creditRequests());
+    }
+    return _getList('/socio/solicitudes', SolicitudCreditoItem.fromJson, client);
+  }
 
   Future<SocioResult<SolicitudCreditoDetalle>> creditRequestDetail(
     int requestId, {
     http.Client? client,
-  }) =>
-      _get('/socio/solicitudes/$requestId', null,
-          SolicitudCreditoDetalle.fromJson, client);
+  }) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.failure(
+        'Detalle de solicitud no disponible en modo demo.',
+      );
+    }
+    return _get('/socio/solicitudes/$requestId', null,
+        SolicitudCreditoDetalle.fromJson, client);
+  }
 
   Future<SocioResult<SolicitudCreditoItem>> cancelCreditRequest(
     int requestId, {
     required String reason,
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.failure(
+        'Cancelación no disponible en modo demo.',
+      );
+    }
     final result = await _request(
       'POST',
       '/socio/solicitudes/$requestId/cancelar',
@@ -234,6 +326,9 @@ class SocioService {
   }
 
   Future<SocioResult<SocioPerfil>> perfil({http.Client? client}) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.perfil());
+    }
     return _get('/socio/perfil', null, SocioPerfil.fromJson, client);
   }
 
@@ -243,6 +338,13 @@ class SocioService {
     String? correo,
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.updatePerfil(
+        direccion: direccion,
+        telefono: telefono,
+        correo: correo,
+      ));
+    }
     final body = <String, dynamic>{
       if (direccion != null) 'direccion': direccion,
       if (telefono != null) 'telefono': telefono,
@@ -260,6 +362,13 @@ class SocioService {
     String? concept,
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.deposit(
+        accountId: accountId,
+        amount: amount,
+        concept: concept,
+      ));
+    }
     return _request(
       'POST',
       '/socio/cuentas/$accountId/depositos',

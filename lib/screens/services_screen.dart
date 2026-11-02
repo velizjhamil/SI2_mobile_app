@@ -7,6 +7,7 @@ import 'transferencia_screen.dart';
 import 'saldos_extractos_screen.dart';
 import 'socio_screens.dart';
 import 'solicitud_credito_screens.dart';
+import 'campo_screens.dart';
 
 class ServicesScreen extends StatelessWidget {
   const ServicesScreen({super.key});
@@ -123,11 +124,17 @@ class ServicesScreen extends StatelessWidget {
               Icons.assignment,
               'Levantamiento Socioeconómico',
               'Flujo de caja, ventas y costos',
-              'Flujo Caja'),
+              'Flujo Caja',
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const CampoHomeScreen()))),
           _buildServiceTile(context, Icons.camera_alt, 'Captura de Fotos y GPS',
-              'Marca de agua y satelital', 'GPS ±3.5m'),
+              'Marca de agua y satelital', 'GPS ±3.5m',
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const CampoHomeScreen()))),
           _buildServiceTile(context, Icons.bolt, 'Precalificación y Scoring',
-              'Motor de riesgo en tiempo real', 'Score 300-850'),
+              'Motor de riesgo en tiempo real', 'Score 300-850',
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const PrecalificacionScreen()))),
           _buildServiceTile(context, Icons.cloud_sync, 'Sincronización Offline',
               'Almacenamiento SQLite local', 'Sincronizado'),
           const SizedBox(height: 18),

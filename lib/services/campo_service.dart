@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/campo_model.dart';
+import 'demo_mode.dart';
 import 'mock_auth_service.dart';
 import 'session_manager.dart';
 
@@ -43,6 +44,13 @@ class CampoService {
     String? canalOrigen,
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      final list = await DemoMode.campo.getWorklist(
+        requiereEvaluacion: requiereEvaluacion,
+        canalOrigen: canalOrigen,
+      );
+      return CampoResult.success(list);
+    }
     final query = <String, String>{
       'requiere_evaluacion': '$requiereEvaluacion',
       if (canalOrigen != null && canalOrigen.isNotEmpty && canalOrigen != 'TODOS')
@@ -60,6 +68,15 @@ class CampoService {
     int solicitudId, {
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      final ficha = await DemoMode.campo.getFichaCampo(solicitudId);
+      return ficha != null
+          ? CampoResult.success(ficha)
+          : const CampoResult.failure(
+              'Solicitud no encontrada en modo demo.',
+              statusCode: 404,
+            );
+    }
     return _get(
       '/creditos/solicitudes/$solicitudId/ficha-campo',
       null,
@@ -73,6 +90,15 @@ class CampoService {
     EvaluacionCampoForm form, {
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      final item = await DemoMode.campo.guardarEvaluacion(solicitudId, form);
+      return item != null
+          ? CampoResult.success(item)
+          : const CampoResult.failure(
+              'Solicitud no encontrada en modo demo.',
+              statusCode: 404,
+            );
+    }
     final result = await _request(
       'PUT',
       '/creditos/solicitudes/$solicitudId',
@@ -95,6 +121,14 @@ class CampoService {
     int solicitudId, {
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      final resultado = await DemoMode.campo.calcularScoring(solicitudId);
+      return resultado != null
+          ? CampoResult.success(resultado)
+          : const CampoResult.failure(
+              'No se pudo calcular el scoring en modo demo.',
+            );
+    }
     final result = await _request(
       'POST',
       '/creditos/solicitudes/$solicitudId/evaluacion',
@@ -116,6 +150,9 @@ class CampoService {
   Future<CampoResult<List<SocioPrecalificacion>>> getSociosActivos({
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return CampoResult.success(await DemoMode.campo.getSociosActivos());
+    }
     return _getList(
       '/socios/',
       {'estado': 'ACTIVO'},
@@ -127,6 +164,9 @@ class CampoService {
   Future<CampoResult<List<ProductoPrecalificacion>>> getProductosActivos({
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return CampoResult.success(await DemoMode.campo.getProductosActivos());
+    }
     return _getList(
       '/creditos/productos',
       {'estado': 'ACTIVO'},
@@ -139,6 +179,14 @@ class CampoService {
     PrecalificacionForm form, {
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      final resultado = await DemoMode.campo.precalificar(form);
+      return resultado != null
+          ? CampoResult.success(resultado)
+          : const CampoResult.failure(
+              'No se pudo calcular la precalificación en modo demo.',
+            );
+    }
     final result = await _request(
       'POST',
       '/creditos/precalificacion',
@@ -161,6 +209,11 @@ class CampoService {
     int solicitudId, {
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return CampoResult.success(
+        await DemoMode.campo.getFotosEvaluacion(solicitudId),
+      );
+    }
     return _getList(
       '/creditos/solicitudes/$solicitudId/evaluacion/fotos',
       null,
@@ -174,6 +227,11 @@ class CampoService {
     String fotoId, {
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return CampoResult.success(
+        await DemoMode.campo.eliminarFotoEvaluacion(solicitudId, fotoId),
+      );
+    }
     final encodedFotoId =
         fotoId.split('/').map(Uri.encodeComponent).join('/');
     final result = await _request(
@@ -209,6 +267,15 @@ class CampoService {
     String? clientId,
     http.Client? client,
   }) async {
+    if (DemoMode.enabled) {
+      return CampoResult.success(
+        await DemoMode.campo.subirFotoEvaluacion(
+          solicitudId,
+          Uint8List.fromList(bytes),
+          filename,
+        ),
+      );
+    }
     final token = AuthService.tokenJWT;
     if (token == null || token.isEmpty) {
       return const CampoResult.failure(

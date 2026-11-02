@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/cuenta_ahorro_model.dart';
+import 'demo_mode.dart';
 import 'mock_auth_service.dart';
 import 'session_manager.dart';
 
@@ -31,6 +32,9 @@ class CuentasResult {
 /// producción para usar un cliente propio con timeout de 5s.
 class CuentasService {
   Future<CuentasResult> listarMisCuentas({http.Client? client}) async {
+    if (DemoMode.enabled) {
+      return CuentasResult.success(await DemoMode.socio.cuentas());
+    }
     final token = AuthService.tokenJWT;
     if (token == null || token.isEmpty) {
       return const CuentasResult.failure(
