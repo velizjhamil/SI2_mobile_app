@@ -84,5 +84,33 @@ void main() {
       expect(result.success, isFalse);
       expect(result.error, contains('Credenciales inválidas'));
     });
+
+    test('403 con detail devuelve el mensaje del backend', () async {
+      const detailMsg =
+          'La suscripción de tu cooperativa no está vigente. Contacta al administrador de la plataforma.';
+      final mockClient = MockClient(
+        (_) async => http.Response(
+          jsonEncode({'detail': detailMsg}),
+          403,
+          headers: {'Content-Type': 'application/json'},
+        ),
+      );
+
+      final result =
+          await AuthService().login('a@b.com', 'clave123', client: mockClient);
+
+      expect(result.success, isFalse);
+      expect(result.error, detailMsg);
+    });
+
+    test('403 sin detail devuelve mensaje de respaldo', () async {
+      final mockClient = MockClient((_) async => http.Response('{}', 403));
+
+      final result =
+          await AuthService().login('a@b.com', 'clave123', client: mockClient);
+
+      expect(result.success, isFalse);
+      expect(result.error, 'Acceso denegado. Contacte al administrador.');
+    });
   });
 }

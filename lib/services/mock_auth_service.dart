@@ -140,6 +140,15 @@ class AuthService {
             'Credenciales inválidas. Verifique su correo y contraseña.',
           );
         }
+        if (response.statusCode == 403) {
+          final detail = _map(response.body)['detail'];
+          if (detail is String && detail.trim().isNotEmpty) {
+            return AuthResult.failure(detail);
+          }
+          return const AuthResult.failure(
+            'Acceso denegado. Contacte al administrador.',
+          );
+        }
         return AuthResult.failure(
           'Error en el servidor (${response.statusCode}). Intente más tarde.',
         );
