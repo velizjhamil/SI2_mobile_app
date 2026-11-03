@@ -61,7 +61,7 @@ class ChatbotService {
                   .toList(),
             }),
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 40));
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
@@ -78,6 +78,15 @@ class ChatbotService {
         return const ChatbotResult.failure(
           'Sesión no válida o expirada. Inicie sesión nuevamente.',
         );
+      }
+
+      if (response.statusCode == 503) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> &&
+            decoded['detail'] is String &&
+            (decoded['detail'] as String).contains('HTTP 429')) {
+          return ChatbotResult.failure(decoded['detail'] as String);
+        }
       }
 
       return ChatbotResult.failure(

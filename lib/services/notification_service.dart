@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import 'cuentas_service.dart';
 import 'mock_auth_service.dart';
+import 'session_manager.dart';
+import '../screens/socio_screens.dart';
 
 enum NotificationType { ingreso, egreso, info }
 
@@ -216,6 +218,39 @@ class NotificationProvider extends ChangeNotifier {
   void clearAll() {
     _notifications.clear();
     notifyListeners();
+  }
+
+  void addRemoteNotification({
+    required String id,
+    required String title,
+    required String message,
+    int? creditId,
+  }) {
+    if (_notifications.any((n) => n.id == id)) return;
+    _notifications.insert(
+      0,
+      AppNotification(
+        id: id.isNotEmpty
+            ? id
+            : '_',
+        title: title,
+        message: message,
+        type: NotificationType.info,
+        timestamp: DateTime.now(),
+      ),
+    );
+    notifyListeners();
+  }
+
+  void openCreditSchedule(int creditId) {
+    final navContext = appNavigatorKey.currentContext;
+    if (navContext != null) {
+      Navigator.of(navContext).push(
+        MaterialPageRoute(
+          builder: (_) => CronogramaCreditoScreen(creditId: creditId),
+        ),
+      );
+    }
   }
 
   // Iniciar monitoreo periódico de cuentas para detectar movimientos externos
