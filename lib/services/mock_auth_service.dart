@@ -90,7 +90,7 @@ class FakeBiometricAuthenticator implements BiometricAuthenticator {
 class AuthService {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://si2-backend-api.onrender.com/api/v1',
+    defaultValue: 'https://si2-backend-api-1.onrender.com/api/v1',
   );
 
   static String? _tokenJWT;
