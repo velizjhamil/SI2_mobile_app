@@ -6,8 +6,11 @@ import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import 'cuentas_service.dart';
 import 'mock_auth_service.dart';
+import 'notificaciones_cooperativa_service.dart';
+import 'session_manager.dart';
+import 'system_notifications.dart';
 
-enum NotificationType { ingreso, egreso, info }
+enum NotificationType { ingreso, egreso, info, cooperativa }
 
 class AppNotification {
   final String id;
@@ -19,6 +22,10 @@ class AppNotification {
   final String? accountNumber;
   final String? amount;
 
+  /// Id en el backend de las notificaciones enviadas por la cooperativa
+  /// (para marcarlas como leídas también en la web).
+  final int? remoteId;
+
   AppNotification({
     required this.id,
     required this.title,
@@ -28,6 +35,7 @@ class AppNotification {
     this.isRead = false,
     this.accountNumber,
     this.amount,
+    this.remoteId,
   });
 }
 
@@ -49,7 +57,14 @@ class NotificationProvider extends ChangeNotifier {
   final CuentasService _cuentasService = CuentasService();
   VoidCallback? onExternalMovementDetected;
 
-  NotificationProvider() {
+  // Notificaciones de la cooperativa (Gestionar notificaciones en la web).
+  final NotificacionesCooperativaService _cooperativaService;
+  final Set<int> _remoteIdsVistos = {};
+  String? _cooperativaUserId;
+  bool _cooperativaSincronizada = false;
+
+  NotificationProvider({NotificacionesCooperativaService? cooperativaService})
+      : _cooperativaService = cooperativaService ?? NotificacionesCooperativaService() {
     _loadPreference();
   }
 
@@ -78,19 +93,30 @@ class NotificationProvider extends ChangeNotifier {
     String? accountNumber,
     String? amount,
     BuildContext? context,
+    int? remoteId,
+    DateTime? timestamp,
+    bool isRead = false,
+    bool alertar = true,
   }) {
     final notification = AppNotification(
       id: '${DateTime.now().millisecondsSinceEpoch}_${_notifications.length}',
       title: title,
       message: message,
       type: type,
-      timestamp: DateTime.now(),
+      timestamp: timestamp ?? DateTime.now(),
+      isRead: isRead,
       accountNumber: accountNumber,
       amount: amount,
+      remoteId: remoteId,
     );
 
     _notifications.insert(0, notification);
     notifyListeners();
+
+    // Notificación del sistema: suena, vibra y queda en la barra de Android.
+    if (_notificationsEnabled && alertar) {
+      SystemNotifications.instance.show(title: title, body: message);
+    }
 
     // Mostrar feedback visual emergente en pantalla si están habilitadas
     if (_notificationsEnabled && context != null && context.mounted) {
@@ -203,14 +229,18 @@ class NotificationProvider extends ChangeNotifier {
     if (index != -1 && !_notifications[index].isRead) {
       _notifications[index].isRead = true;
       notifyListeners();
+      final remoteId = _notifications[index].remoteId;
+      if (remoteId != null) _cooperativaService.marcarLeida(remoteId);
     }
   }
 
   void markAllAsRead() {
+    final hayRemotasSinLeer = _notifications.any((n) => !n.isRead && n.remoteId != null);
     for (var n in _notifications) {
       n.isRead = true;
     }
     notifyListeners();
+    if (hayRemotasSinLeer) _cooperativaService.marcarTodas();
   }
 
   void clearAll() {
@@ -220,10 +250,52 @@ class NotificationProvider extends ChangeNotifier {
 
   // Iniciar monitoreo periódico de cuentas para detectar movimientos externos
   void startMonitoring({BuildContext? context}) {
+    // Pide el permiso de notificaciones y abre la bandeja al tocar un aviso.
+    SystemNotifications.instance.onTap = () {
+      final ctx = appNavigatorKey.currentContext;
+      if (ctx != null) showNotificationTray(ctx);
+    };
+    SystemNotifications.instance.init();
+    checkCooperativa();
     _pollingTimer?.cancel();
     _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
       await _checkMovements(context: context);
+      await checkCooperativa();
     });
+  }
+
+  /// Trae las notificaciones enviadas por la cooperativa. La primera
+  /// sincronización solo carga la bandeja; las que llegan después suenan.
+  Future<void> checkCooperativa() async {
+    final userId = AuthService.currentUserId;
+    if (userId == null) return;
+    if (userId != _cooperativaUserId) {
+      // Otro usuario inició sesión: no mezclar su bandeja con la anterior.
+      _cooperativaUserId = userId;
+      _cooperativaSincronizada = false;
+      _remoteIdsVistos.clear();
+      _notifications.removeWhere((n) => n.remoteId != null);
+    }
+
+    final items = await _cooperativaService.listar();
+    if (items == null || userId != _cooperativaUserId) return;
+
+    final primeraVez = !_cooperativaSincronizada;
+    // El backend las devuelve de la más nueva a la más antigua; se insertan al
+    // inicio, así que se recorren al revés para conservar el orden.
+    for (final item in items.reversed) {
+      if (!_remoteIdsVistos.add(item.id)) continue;
+      addNotification(
+        title: item.titulo,
+        message: item.mensaje,
+        type: NotificationType.cooperativa,
+        remoteId: item.id,
+        timestamp: item.fecha,
+        isRead: item.leida,
+        alertar: !primeraVez && !item.leida,
+      );
+    }
+    _cooperativaSincronizada = true;
   }
 
   void stopMonitoring() {
@@ -414,7 +486,7 @@ class _NotificationTraySheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Aquí aparecerán tus depósitos y descuentos en tiempo real',
+                            'Aquí aparecerán tus movimientos y los avisos de tu cooperativa',
                             style: TextStyle(fontSize: 12, color: subtextColor),
                           ),
                         ],
@@ -430,6 +502,7 @@ class _NotificationTraySheet extends StatelessWidget {
                         final n = notifications[index];
                         final isIngreso = n.type == NotificationType.ingreso;
                         final isEgreso = n.type == NotificationType.egreso;
+                        final isCooperativa = n.type == NotificationType.cooperativa;
 
                         return InkWell(
                           onTap: () => provider?.markAsRead(n.id),
@@ -463,7 +536,9 @@ class _NotificationTraySheet extends StatelessWidget {
                                         : (isEgreso
                                             ? const Color(0xFFC0392B)
                                                 .withValues(alpha: 0.15)
-                                            : Colors.blue.withValues(alpha: 0.15)),
+                                            : isCooperativa
+                                                ? Colors.amber.withValues(alpha: 0.18)
+                                                : Colors.blue.withValues(alpha: 0.15)),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Icon(
@@ -471,12 +546,16 @@ class _NotificationTraySheet extends StatelessWidget {
                                         ? Icons.arrow_downward_rounded
                                         : (isEgreso
                                             ? Icons.arrow_upward_rounded
-                                            : Icons.info_outline),
+                                            : isCooperativa
+                                                ? Icons.campaign_outlined
+                                                : Icons.info_outline),
                                     color: isIngreso
                                         ? const Color(0xFF27AE60)
                                         : (isEgreso
                                             ? const Color(0xFFE74C3C)
-                                            : Colors.blue),
+                                            : isCooperativa
+                                                ? Colors.amber.shade800
+                                                : Colors.blue),
                                     size: 18,
                                   ),
                                 ),
