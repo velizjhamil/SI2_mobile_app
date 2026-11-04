@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:local_auth/local_auth.dart';
 
+import 'notification_service.dart';
+import 'plan_service.dart';
 import 'secure_token_store.dart';
 
 class AuthResult {
@@ -121,6 +123,7 @@ class AuthService {
   }) async {
     tokenJWT = null;
     currentRole = null;
+    PlanService.reset();
     final httpClient = client ?? http.Client();
     final close = client == null;
     try {
@@ -193,6 +196,7 @@ class AuthService {
   Future<AuthResult> authenticateWithBiometrics({
     http.Client? client,
   }) async {
+    PlanService.reset();
     if (!await tokenStore.biometricsEnabled()) {
       return const AuthResult.failure(
         'Ingrese con su contraseña para habilitar la biometría.',
@@ -326,6 +330,8 @@ class AuthService {
       if (close) httpClient.close();
       tokenJWT = null;
       currentRole = null;
+      PlanService.reset();
+      NotificationProvider.stopActiveMonitoring();
       try {
         await tokenStore.clearToken();
         return true;

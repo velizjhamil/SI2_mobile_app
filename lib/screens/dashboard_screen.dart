@@ -6,6 +6,7 @@ import '../core/theme/theme_provider.dart';
 import '../models/cuenta_ahorro_model.dart';
 import '../services/cuentas_service.dart';
 import '../services/notification_service.dart';
+import '../services/plan_service.dart';
 import '../services/socio_service.dart';
 import '../widgets/asset_card.dart';
 import 'saldos_extractos_screen.dart';
@@ -53,6 +54,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _future = _service.listarMisCuentas();
     });
+  }
+
+  @override
+  void dispose() {
+    NotificationProvider.stopActiveMonitoring();
+    super.dispose();
   }
 
   @override
@@ -115,7 +122,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: _recargar,
             icon: Icon(Icons.refresh, color: subtextColor, size: 20),
           ),
-          Builder(
+          if (isModuloPermitido(PlanService.currentInfo, 'notificaciones_socios'))
+            Builder(
             builder: (context) {
               NotificationProvider? notif;
               try {

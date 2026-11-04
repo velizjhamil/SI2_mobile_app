@@ -7,6 +7,7 @@ import '../core/theme/app_colors.dart';
 import 'cuentas_service.dart';
 import 'mock_auth_service.dart';
 import 'notificaciones_cooperativa_service.dart';
+import 'plan_service.dart';
 import 'session_manager.dart';
 import 'system_notifications.dart';
 import '../screens/socio_screens.dart';
@@ -44,6 +45,12 @@ class NotificationProvider extends ChangeNotifier {
   static const _storageKey = 'notifications_enabled_preference';
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
+  static NotificationProvider? activeInstance;
+
+  static void stopActiveMonitoring() {
+    activeInstance?.stopMonitoring();
+  }
+
   bool _notificationsEnabled = true;
   bool get notificationsEnabled => _notificationsEnabled;
 
@@ -54,8 +61,9 @@ class NotificationProvider extends ChangeNotifier {
 
   // Polling de movimientos externos
   Timer? _pollingTimer;
+  bool get isMonitoring => _pollingTimer != null && _pollingTimer!.isActive;
   Map<int, double>? _lastBalances;
-  final CuentasService _cuentasService = CuentasService();
+  final CuentasService _cuentasService;
   VoidCallback? onExternalMovementDetected;
 
   // Notificaciones de la cooperativa (Gestionar notificaciones en la web).
@@ -64,8 +72,13 @@ class NotificationProvider extends ChangeNotifier {
   String? _cooperativaUserId;
   bool _cooperativaSincronizada = false;
 
-  NotificationProvider({NotificacionesCooperativaService? cooperativaService})
-      : _cooperativaService = cooperativaService ?? NotificacionesCooperativaService() {
+  NotificationProvider({
+    NotificacionesCooperativaService? cooperativaService,
+    CuentasService? cuentasService,
+  })  : _cooperativaService =
+            cooperativaService ?? NotificacionesCooperativaService(),
+        _cuentasService = cuentasService ?? CuentasService() {
+    activeInstance = this;
     _loadPreference();
   }
 
@@ -301,6 +314,9 @@ class NotificationProvider extends ChangeNotifier {
   /// Trae las notificaciones enviadas por la cooperativa. La primera
   /// sincronización solo carga la bandeja; las que llegan después suenan.
   Future<void> checkCooperativa() async {
+    if (!isModuloPermitido(PlanService.currentInfo, 'notificaciones_socios')) {
+      return;
+    }
     final userId = AuthService.currentUserId;
     if (userId == null) return;
     if (userId != _cooperativaUserId) {
@@ -335,9 +351,17 @@ class NotificationProvider extends ChangeNotifier {
   void stopMonitoring() {
     _pollingTimer?.cancel();
     _pollingTimer = null;
+    _lastBalances = null;
   }
 
+  @visibleForTesting
+  Future<void> checkMovementsForTesting({BuildContext? context}) =>
+      _checkMovements(context: context);
+
   Future<void> _checkMovements({BuildContext? context}) async {
+    if (!isModuloPermitido(PlanService.currentInfo, 'banca_movil')) {
+      return;
+    }
     final token = AuthService.tokenJWT;
     if (token == null || token.isEmpty) return;
 

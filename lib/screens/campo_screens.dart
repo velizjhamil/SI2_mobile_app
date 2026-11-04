@@ -10,7 +10,9 @@ import '../models/sync_model.dart';
 import '../services/campo_hardware_service.dart';
 import '../services/campo_service.dart';
 import '../services/mock_auth_service.dart';
+import '../services/notification_service.dart';
 import '../services/offline_store.dart';
+import '../services/plan_service.dart';
 import '../services/sync_campo_service.dart';
 import '../services/sync_service.dart';
 import '../widgets/offline_banner.dart';
@@ -207,6 +209,8 @@ class _CampoHomeScreenState extends State<CampoHomeScreen>
     if (confirmed == true) {
       AuthService.tokenJWT = null;
       AuthService.currentRole = null;
+      PlanService.reset();
+      NotificationProvider.stopActiveMonitoring();
       try {
         await AuthService.currentStore.clearToken();
       } catch (_) {}
@@ -286,22 +290,23 @@ class _CampoHomeScreenState extends State<CampoHomeScreen>
             ),
             onPressed: _syncing ? null : _manualSync,
           ),
-          IconButton(
-            key: const Key('campo_precalificar_nav_btn'),
-            tooltip: 'Precalificar',
-            icon: const Icon(Icons.calculate_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PrecalificacionScreen(
-                    service: _service,
-                    store: _store,
+          if (isModuloPermitido(PlanService.currentInfo, 'scoring_crediticio'))
+            IconButton(
+              key: const Key('campo_precalificar_nav_btn'),
+              tooltip: 'Precalificar',
+              icon: const Icon(Icons.calculate_outlined),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PrecalificacionScreen(
+                      service: _service,
+                      store: _store,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
           IconButton(
             key: const Key('campo_logout_btn'),
             tooltip: 'Cerrar sesión',
@@ -641,19 +646,23 @@ class _CampoHomeScreenState extends State<CampoHomeScreen>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('campo_precalificar_fab'),
-        icon: const Icon(Icons.calculate_outlined),
-        label: const Text('Precalificar'),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => PrecalificacionScreen(service: _service),
-            ),
-          );
-        },
-      ),
+      floatingActionButton:
+          isModuloPermitido(PlanService.currentInfo, 'scoring_crediticio')
+              ? FloatingActionButton.extended(
+                  key: const Key('campo_precalificar_fab'),
+                  icon: const Icon(Icons.calculate_outlined),
+                  label: const Text('Precalificar'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            PrecalificacionScreen(service: _service),
+                      ),
+                    );
+                  },
+                )
+              : null,
     );
   }
 }

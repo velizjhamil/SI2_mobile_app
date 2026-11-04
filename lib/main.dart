@@ -6,6 +6,7 @@ import 'core/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_navigation_screen.dart';
 import 'screens/campo_screens.dart';
+import 'screens/plan_bloqueado_screen.dart';
 import 'services/session_manager.dart';
 
 import 'services/notification_service.dart';
@@ -54,6 +55,7 @@ class ForestMicrofinanceApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/dashboard': (context) => const MainNavigationScreen(),
         '/campo': (context) => const CampoHomeScreen(),
+        '/plan_bloqueado': (context) => const PlanBloqueadoScreen(),
       },
     );
   }

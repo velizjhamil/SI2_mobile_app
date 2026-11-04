@@ -8,6 +8,7 @@ import 'saldos_extractos_screen.dart';
 import 'socio_screens.dart';
 import 'solicitud_credito_screens.dart';
 import 'campo_screens.dart';
+import '../services/plan_service.dart';
 
 class ServicesScreen extends StatelessWidget {
   const ServicesScreen({super.key});
@@ -147,12 +148,13 @@ class ServicesScreen extends StatelessWidget {
               'Autenticación Biométrica',
               'FaceID, TouchID y PIN seguro',
               'FIDO2'),
-          _buildServiceTile(
-              context,
-              Icons.notifications_active,
-              'Notificaciones Push',
-              'Alertas de cuotas y vencimientos',
-              'Alertas'),
+          if (isModuloPermitido(PlanService.currentInfo, 'notificaciones_socios'))
+            _buildServiceTile(
+                context,
+                Icons.notifications_active,
+                'Notificaciones Push',
+                'Alertas de cuotas y vencimientos',
+                'Alertas'),
           _buildServiceTile(context, Icons.logout, 'Cierre Seguro de Sesión',
               'Revocación de tokens y limpieza', 'Seguridad'),
           const SizedBox(height: 20),

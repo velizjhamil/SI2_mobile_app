@@ -3,9 +3,13 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:forest_microfinance/services/cuentas_service.dart';
 import 'package:forest_microfinance/services/mock_auth_service.dart';
 import 'package:forest_microfinance/services/notification_service.dart';
 import 'package:forest_microfinance/services/notificaciones_cooperativa_service.dart';
+import 'package:forest_microfinance/services/plan_service.dart';
+import 'package:forest_microfinance/services/secure_token_store.dart';
+import 'package:forest_microfinance/services/session_manager.dart';
 
 Map<String, dynamic> _item(int id, {bool leida = false, String titulo = 'Aviso'}) => {
       'id': id,
@@ -156,4 +160,76 @@ void main() {
       expect(provider.notifications.map((n) => n.remoteId), [20]);
     });
   });
+
+  group('Monitoreo de movimientos y detención en logout (Defecto 5)', () {
+    tearDown(() {
+      NotificationProvider.stopActiveMonitoring();
+      PlanService.reset();
+    });
+
+    test('checkMovements no consulta cuentas si banca_movil no está permitido', () async {
+      login('7');
+      PlanService.currentInfo = const PlanModulosInfo(
+        plan: PlanInfo(codigo: 'BASICO', nombre: 'Básico'),
+        modulos: [], // sin banca_movil
+      );
+
+      final countingService = _CountingCuentasService();
+      final provider = NotificationProvider(cuentasService: countingService);
+
+      await provider.checkMovementsForTesting();
+      expect(countingService.llamadas, 0);
+
+      // Ahora permitiendo banca_movil
+      PlanService.currentInfo = const PlanModulosInfo(
+        plan: PlanInfo(codigo: 'BASICO', nombre: 'Básico'),
+        modulos: ['banca_movil'],
+      );
+
+      await provider.checkMovementsForTesting();
+      expect(countingService.llamadas, 1);
+    });
+
+    test('stopMonitoring y stopActiveMonitoring detienen el monitor', () {
+      final provider = NotificationProvider();
+      provider.startMonitoring();
+      expect(provider.isMonitoring, isTrue);
+
+      NotificationProvider.stopActiveMonitoring();
+      expect(provider.isMonitoring, isFalse);
+    });
+
+    test('AuthService.logout detiene el monitor activo de notificaciones', () async {
+      final provider = NotificationProvider();
+      provider.startMonitoring();
+      expect(provider.isMonitoring, isTrue);
+
+      final auth = AuthService(tokenStore: InMemorySecureTokenStore());
+      await auth.logout();
+      expect(provider.isMonitoring, isFalse);
+    });
+
+    test('SessionManager.onUnauthorized detiene el monitor activo y limpia PlanService', () async {
+      PlanService.currentInfo = const PlanModulosInfo(
+        plan: PlanInfo(codigo: 'BASICO', nombre: 'Básico'),
+        modulos: ['banca_movil'],
+      );
+      final provider = NotificationProvider();
+      provider.startMonitoring();
+      expect(provider.isMonitoring, isTrue);
+
+      await SessionManager.onUnauthorized();
+      expect(PlanService.currentInfo, isNull);
+      expect(provider.isMonitoring, isFalse);
+    });
+  });
+}
+
+class _CountingCuentasService extends CuentasService {
+  int llamadas = 0;
+  @override
+  Future<CuentasResult> listarMisCuentas({http.Client? client}) async {
+    llamadas++;
+    return const CuentasResult.success([]);
+  }
 }

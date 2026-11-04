@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme/app_colors.dart';
+import '../services/plan_service.dart';
 import 'chatbot_screen.dart';
 import 'dashboard_screen.dart';
 import 'services_screen.dart';
@@ -30,15 +31,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         index: _currentIndex,
         children: _screens,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ChatbotScreen()),
-        ),
-        tooltip: 'Castor Asistente IA',
-        backgroundColor: AppColors.forestGreen,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.smart_toy_outlined),
-      ),
+      floatingActionButton:
+          isModuloPermitido(PlanService.currentInfo, 'chatbot_ia')
+              ? FloatingActionButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ChatbotScreen()),
+                  ),
+                  tooltip: 'Castor Asistente IA',
+                  backgroundColor: AppColors.forestGreen,
+                  foregroundColor: Colors.white,
+                  child: const Icon(Icons.smart_toy_outlined),
+                )
+              : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'mock_auth_service.dart';
+import 'notification_service.dart';
+import 'plan_service.dart';
 import 'secure_token_store.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
@@ -15,6 +17,8 @@ class SessionManager {
     try {
       AuthService.tokenJWT = null;
       AuthService.currentRole = null;
+      PlanService.reset();
+      NotificationProvider.stopActiveMonitoring();
       await AuthService.currentStore.clearToken();
       appNavigatorKey.currentState?.pushNamedAndRemoveUntil(
         '/login',

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'mock_auth_service.dart';
+import 'plan_service.dart';
 
 /// Notificación enviada por la cooperativa (recordatorio de pago, promoción o aviso).
 class NotificacionCooperativa {
@@ -61,6 +62,9 @@ class NotificacionesCooperativaService {
   }
 
   Future<List<NotificacionCooperativa>?> listar() async {
+    if (!isModuloPermitido(PlanService.currentInfo, 'notificaciones_socios')) {
+      return null;
+    }
     final headers = _headers();
     if (headers == null) return null;
     return _run((c) async {
@@ -74,6 +78,9 @@ class NotificacionesCooperativaService {
   }
 
   Future<bool> marcarLeida(int id) async {
+    if (!isModuloPermitido(PlanService.currentInfo, 'notificaciones_socios')) {
+      return false;
+    }
     final headers = _headers();
     if (headers == null) return false;
     final ok = await _run((c) async {
@@ -85,6 +92,9 @@ class NotificacionesCooperativaService {
   }
 
   Future<bool> marcarTodas() async {
+    if (!isModuloPermitido(PlanService.currentInfo, 'notificaciones_socios')) {
+      return false;
+    }
     final headers = _headers();
     if (headers == null) return false;
     final ok = await _run((c) async {

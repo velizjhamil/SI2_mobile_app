@@ -3,8 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/theme_provider.dart';
 import '../services/mock_auth_service.dart';
+import '../services/plan_service.dart';
 import 'campo_screens.dart';
 import 'main_navigation_screen.dart';
+import 'plan_bloqueado_screen.dart';
 
 // Paleta Minimalista CoopIA (Extraída exactamente de tu imagen)
 abstract class CoopPalette {
@@ -20,7 +22,8 @@ abstract class CoopPalette {
 
 class LoginScreen extends StatefulWidget {
   final AuthService? authService;
-  const LoginScreen({super.key, this.authService});
+  final PlanService? planService;
+  const LoginScreen({super.key, this.authService, this.planService});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -32,6 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController(text: 'CoopIA#2026');
   final _formKey = GlobalKey<FormState>();
   late final AuthService _authService;
+  late final PlanService _planService;
   late Future<bool> _biometricButton;
 
   bool _obscurePassword = true;
@@ -42,6 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _authService = widget.authService ?? AuthService();
+    _planService = widget.planService ?? PlanService();
     _biometricButton = _hasBiometricSession();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final message = ModalRoute.of(context)?.settings.arguments;
@@ -84,6 +89,18 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } else {
+      if (!isModuloPermitido(PlanService.currentInfo, 'banca_movil')) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            settings: const RouteSettings(name: '/plan_bloqueado'),
+            builder: (_) => PlanBloqueadoScreen(
+              planNombre: PlanService.currentInfo?.plan?.nombre,
+              authService: _authService,
+            ),
+          ),
+        );
+        return;
+      }
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           settings: const RouteSettings(name: '/dashboard'),
@@ -96,6 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
+    PlanService.reset();
     setState(() => _isLoading = true);
     final result = await _authService.login(
       _emailController.text,
@@ -105,6 +123,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result.success) {
+      await _planService.fetchMisModulos();
+      if (!mounted) return;
       final biometricAvailable = await _authService.isBiometricAvailable();
       final biometricEnabled =
           await _authService.tokenStore.biometricsEnabled();
@@ -145,6 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleBiometricLogin() async {
+    PlanService.reset();
     setState(() => _isBioLoading = true);
     final available = await _authService.isBiometricAvailable();
     if (!mounted) return;
@@ -160,6 +181,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isBioLoading = false);
 
     if (result.success) {
+      await _planService.fetchMisModulos();
+      if (!mounted) return;
       _goToMain(role: result.role);
     } else {
       _showError(result.error ?? 'Autenticación fallida.');
