@@ -582,6 +582,17 @@ class _SimuladorCreditoScreenState extends State<SimuladorCreditoScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      const Text('Total seguro estimado:'),
+                      Text(
+                        '${_simulacion!.totalSeguro} ${widget.producto.moneda}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       const Text('Total a pagar:'),
                       Text(
                         '${_simulacion!.totalAPagar} ${widget.producto.moneda}',
@@ -606,6 +617,7 @@ class _SimuladorCreditoScreenState extends State<SimuladorCreditoScreen> {
                       DataColumn(label: Text('N°')),
                       DataColumn(label: Text('Capital')),
                       DataColumn(label: Text('Interés')),
+                      DataColumn(label: Text('Seguro')),
                       DataColumn(label: Text('Cuota')),
                       DataColumn(label: Text('Saldo')),
                     ],
@@ -614,6 +626,7 @@ class _SimuladorCreditoScreenState extends State<SimuladorCreditoScreen> {
                         DataCell(Text(c.numero.toString())),
                         DataCell(Text(c.capital)),
                         DataCell(Text(c.interes)),
+                        DataCell(Text(c.seguro)),
                         DataCell(Text(c.cuota)),
                         DataCell(Text(c.saldo)),
                       ]);

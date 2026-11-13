@@ -45,15 +45,16 @@ class _FakeSocioService extends SocioService {
         'saldo_pendiente': '600.00',
         'estado': 'VIGENTE',
       },
+      totalInsurance: '7.50',
       installments: [
         CreditScheduleItem(
           number: 1,
           dueDate: '2026-09-01',
           capital: '100.00',
           interest: '20.00',
-          insurance: '0.00',
+          insurance: '2.50',
           mora: '0.00',
-          totalAmount: '120.00',
+          totalAmount: '122.50',
           capitalBalance: '500.00',
           status: 'PAGADA',
           paymentDate: '2026-09-01',
@@ -63,9 +64,9 @@ class _FakeSocioService extends SocioService {
           dueDate: '2026-10-01',
           capital: '100.00',
           interest: '20.00',
-          insurance: '0.00',
+          insurance: '2.50',
           mora: '15.00',
-          totalAmount: '135.00',
+          totalAmount: '137.50',
           capitalBalance: '400.00',
           status: 'VENCIDA',
           paymentDate: '',
@@ -75,9 +76,9 @@ class _FakeSocioService extends SocioService {
           dueDate: '2026-11-01',
           capital: '100.00',
           interest: '20.00',
-          insurance: '0.00',
+          insurance: '2.50',
           mora: '0.00',
-          totalAmount: '120.00',
+          totalAmount: '122.50',
           capitalBalance: '300.00',
           status: 'PENDIENTE',
           paymentDate: '',
@@ -212,6 +213,8 @@ void main() {
     expect(find.text('PENDIENTE'), findsOneWidget);
     expect(find.text('Capital amortizado:'), findsWidgets);
     expect(find.text('Interés cuota:'), findsWidgets);
+    expect(find.text('Seguro desgravamen:'), findsWidgets);
+    expect(find.text('TOTAL SEGURO'), findsOneWidget);
     expect(find.text('Mora acumulada:'), findsOneWidget);
     expect(find.text('Pagar cuota'), findsNWidgets(2));
   });

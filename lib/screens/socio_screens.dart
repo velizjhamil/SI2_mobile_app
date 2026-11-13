@@ -932,9 +932,10 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceAround,
+                        Wrap(
+                          alignment: WrapAlignment.spaceAround,
+                          spacing: 12,
+                          runSpacing: 8,
                           children: [
                             _miniBadge(
                                 'PAGADAS', '$pagadas', const Color(0xFF2E7D32), isDark),
@@ -942,6 +943,8 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
                                 'VENCIDAS', '$vencidas', const Color(0xFFC62828), isDark),
                             _miniBadge(
                                 'PENDIENTES', '$pendientes', const Color(0xFF1565C0), isDark),
+                            _miniBadge('TOTAL SEGURO',
+                                '$currency ${schedule.totalInsurance}', accentColor, isDark),
                             if (saldoPendiente.isNotEmpty)
                               _miniBadge('SALDO RESTANTE',
                                   '$currency $saldoPendiente', textColor, isDark),
@@ -1225,7 +1228,7 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
                 _desgloseRow('Interés cuota:', '$currency ${item.interest}',
                     textColor, subtextColor),
                 const SizedBox(height: 4),
-                _desgloseRow('Seguro / Cargos:', '$currency ${item.insurance}',
+                _desgloseRow('Seguro desgravamen:', '$currency ${item.insurance}',
                     textColor, subtextColor),
                 if (moraNum > 0) ...[
                   const SizedBox(height: 4),
@@ -1537,6 +1540,21 @@ class _PagoCreditoScreenState extends State<PagoCreditoScreen> {
                               style: GoogleFonts.dmSans(
                                   fontSize: 12, color: subtextColor)),
                           Text('$currency ${widget.cuota!.interest}',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Seguro:',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 12, color: subtextColor)),
+                          Text('$currency ${widget.cuota!.insurance}',
                               style: GoogleFonts.dmSans(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,

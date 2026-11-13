@@ -10,6 +10,9 @@ class Comprobante {
   final int? creditId;
   final int? installmentNumber;
   final String? description;
+  final String? capital;
+  final String? interest;
+  final String? insurance;
   final DateTime? issuedAt;
   final String verificationCode;
   final String verificationUrl;
@@ -26,6 +29,9 @@ class Comprobante {
     required this.creditId,
     required this.installmentNumber,
     required this.description,
+    this.capital,
+    this.interest,
+    this.insurance,
     required this.issuedAt,
     required this.verificationCode,
     required this.verificationUrl,
@@ -43,6 +49,9 @@ class Comprobante {
         creditId: _nullableInt(json['credito_id']),
         installmentNumber: _nullableInt(json['numero_cuota']),
         description: json['glosa']?.toString(),
+        capital: json['capital']?.toString(),
+        interest: json['interes']?.toString() ?? json['interest']?.toString(),
+        insurance: json['seguro']?.toString() ?? json['insurance']?.toString(),
         issuedAt: DateTime.tryParse(_string(json['emitido_en'])),
         verificationCode: _string(json['codigo_verificacion']),
         verificationUrl: _string(json['url_verificacion']),

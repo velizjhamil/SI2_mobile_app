@@ -987,13 +987,17 @@ class DemoSocioData {
   }) {
     final cuota = _cuotaFrances(monto, tasaPct, plazo);
     final r = tasaPct / 100 / 12;
+    const tasaSeguroPct = 0.05;
     var saldo = monto;
     final items = <CreditScheduleItem>[];
     final hoy = DateTime.now();
     for (var n = 1; n <= plazo; n++) {
-      final interes = saldo * r;
+      final saldoInicial = saldo;
+      final interes = saldoInicial * r;
+      final seguro = saldoInicial * (tasaSeguroPct / 100);
       final capital = cuota - interes;
-      saldo = math.max(0, saldo - capital);
+      final cuotaTotal = capital + interes + seguro;
+      saldo = math.max(0, saldoInicial - capital);
       final due = _addMonths(firstDue, n - 1);
       final isPaid = n <= pagadas;
       final status = isPaid
@@ -1006,9 +1010,9 @@ class DemoSocioData {
         dueDate: _fmt(due),
         capital: capital.toStringAsFixed(2),
         interest: interes.toStringAsFixed(2),
-        insurance: '0.00',
+        insurance: seguro.toStringAsFixed(2),
         mora: '0.00',
-        totalAmount: cuota.toStringAsFixed(2),
+        totalAmount: cuotaTotal.toStringAsFixed(2),
         capitalBalance: saldo.toStringAsFixed(2),
         status: status,
         paymentDate: isPaid ? _fmt(due) : '',
@@ -1016,6 +1020,8 @@ class DemoSocioData {
     }
     final saldoPendiente = items[pagadas - 1].capitalBalance;
     final estado = saldoPendiente == '0.00' ? 'CANCELADO' : 'VIGENTE';
+    final totalSeguro = items.fold(
+        0.0, (sum, c) => sum + (double.tryParse(c.insurance) ?? 0.0));
     return CreditSchedule(
       credit: {
         'id': creditId,
@@ -1027,8 +1033,10 @@ class DemoSocioData {
         'estado': estado,
         'tasa_interes': '$tasaPct%',
         'plazo_meses': plazo,
-        'cuota_estimada': cuota.toStringAsFixed(2),
+        'cuota_estimada':
+            items.isNotEmpty ? items.first.totalAmount : cuota.toStringAsFixed(2),
       },
+      totalInsurance: totalSeguro.toStringAsFixed(2),
       installments: items,
     );
   }
@@ -1149,6 +1157,7 @@ class DemoSocioData {
         plazoMinMeses: 6,
         plazoMaxMeses: 36,
         tasaInteresAnual: '12.50',
+        tasaSeguroDesgravamen: '0.05',
         tipoAmortizacion: 'FRANCESA',
         requiereGarantia: false,
       ),
@@ -1162,6 +1171,7 @@ class DemoSocioData {
         plazoMinMeses: 12,
         plazoMaxMeses: 48,
         tasaInteresAnual: '11.80',
+        tasaSeguroDesgravamen: '0.06',
         tipoAmortizacion: 'FRANCESA',
         requiereGarantia: true,
       ),
@@ -1175,6 +1185,7 @@ class DemoSocioData {
         plazoMinMeses: 24,
         plazoMaxMeses: 120,
         tasaInteresAnual: '9.50',
+        tasaSeguroDesgravamen: '0.05',
         tipoAmortizacion: 'FRANCESA',
         requiereGarantia: true,
       ),
@@ -1198,28 +1209,38 @@ class DemoSocioData {
     if (producto == null) return null;
     final monto = _parse(amount);
     final tasa = _parse(producto.tasaInteresAnual);
+    final tasaSeguro = _parse(producto.tasaSeguroDesgravamen);
     final cuota = _cuotaFrances(monto, tasa, termMonths);
     final r = tasa / 100 / 12;
     var saldo = monto;
     final cronograma = <SimulacionCuota>[];
     for (var n = 1; n <= termMonths; n++) {
-      final interes = saldo * r;
+      final saldoInicial = saldo;
+      final interes = saldoInicial * r;
+      final seguro = saldoInicial * (tasaSeguro / 100);
       final capital = cuota - interes;
-      saldo = math.max(0, saldo - capital);
+      final cuotaTotal = capital + interes + seguro;
+      saldo = math.max(0, saldoInicial - capital);
       cronograma.add(SimulacionCuota(
         numero: n,
         capital: capital.toStringAsFixed(2),
         interes: interes.toStringAsFixed(2),
-        cuota: cuota.toStringAsFixed(2),
+        seguro: seguro.toStringAsFixed(2),
+        cuota: cuotaTotal.toStringAsFixed(2),
         saldo: saldo.toStringAsFixed(2),
       ));
     }
     final totalIntereses =
         cronograma.fold(0.0, (sum, c) => sum + _parse(c.interes));
+    final totalSeguro =
+        cronograma.fold(0.0, (sum, c) => sum + _parse(c.seguro));
+    final cuotaEstimada =
+        cronograma.isNotEmpty ? cronograma.first.cuota : cuota.toStringAsFixed(2);
     return SimulacionCredito(
-      cuotaEstimada: cuota.toStringAsFixed(2),
+      cuotaEstimada: cuotaEstimada,
       totalIntereses: totalIntereses.toStringAsFixed(2),
-      totalAPagar: (monto + totalIntereses).toStringAsFixed(2),
+      totalSeguro: totalSeguro.toStringAsFixed(2),
+      totalAPagar: (monto + totalIntereses + totalSeguro).toStringAsFixed(2),
       cronograma: cronograma,
     );
   }

@@ -82,6 +82,12 @@ class _ComprobanteScreenState extends State<ComprobanteScreen> {
           _line('Tipo', receipt.type == 'PAGO_CUOTA' ? 'Pago de cuota' : 'Transferencia'),
           _line('Fecha y hora', _dateTime()),
           _line('Monto', '${receipt.amount} ${receipt.currency}'),
+          if (receipt.capital != null)
+            _line('Capital', '${receipt.capital} ${receipt.currency}'),
+          if (receipt.interest != null)
+            _line('Interés', '${receipt.interest} ${receipt.currency}'),
+          if (receipt.insurance != null)
+            _line('Seguro', '${receipt.insurance} ${receipt.currency}'),
           _line('Cuenta origen', receipt.sourceAccount),
           if (receipt.destinationAccount != null)
             _line('Cuenta destino', receipt.destinationAccount!),

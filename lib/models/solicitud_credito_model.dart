@@ -12,6 +12,7 @@ class ProductoCreditoSocio {
   final int plazoMinMeses;
   final int plazoMaxMeses;
   final String tasaInteresAnual;
+  final String tasaSeguroDesgravamen;
   final String tipoAmortizacion;
   final bool requiereGarantia;
 
@@ -25,6 +26,7 @@ class ProductoCreditoSocio {
     required this.plazoMinMeses,
     required this.plazoMaxMeses,
     required this.tasaInteresAnual,
+    this.tasaSeguroDesgravamen = '0.00',
     required this.tipoAmortizacion,
     required this.requiereGarantia,
   });
@@ -40,6 +42,9 @@ class ProductoCreditoSocio {
         plazoMinMeses: _int(json['plazo_min_meses']),
         plazoMaxMeses: _int(json['plazo_max_meses']),
         tasaInteresAnual: _string(json['tasa_interes_anual']),
+        tasaSeguroDesgravamen: json['tasa_seguro_desgravamen'] != null
+            ? _string(json['tasa_seguro_desgravamen'])
+            : '0.00',
         tipoAmortizacion: _string(json['tipo_amortizacion']),
         requiereGarantia: json['requiere_garantia'] == true,
       );
@@ -49,6 +54,7 @@ class SimulacionCuota {
   final int numero;
   final String capital;
   final String interes;
+  final String seguro;
   final String cuota;
   final String saldo;
 
@@ -56,6 +62,7 @@ class SimulacionCuota {
     required this.numero,
     required this.capital,
     required this.interes,
+    this.seguro = '0.00',
     required this.cuota,
     required this.saldo,
   });
@@ -65,6 +72,7 @@ class SimulacionCuota {
         numero: _int(json['numero']),
         capital: _string(json['capital']),
         interes: _string(json['interes']),
+        seguro: json['seguro'] != null ? _string(json['seguro']) : '0.00',
         cuota: _string(json['cuota']),
         saldo: _string(json['saldo']),
       );
@@ -73,12 +81,14 @@ class SimulacionCuota {
 class SimulacionCredito {
   final String cuotaEstimada;
   final String totalIntereses;
+  final String totalSeguro;
   final String totalAPagar;
   final List<SimulacionCuota> cronograma;
 
   const SimulacionCredito({
     required this.cuotaEstimada,
     required this.totalIntereses,
+    this.totalSeguro = '0.00',
     required this.totalAPagar,
     required this.cronograma,
   });
@@ -87,6 +97,9 @@ class SimulacionCredito {
       SimulacionCredito(
         cuotaEstimada: _string(json['cuota_estimada']),
         totalIntereses: _string(json['total_intereses']),
+        totalSeguro: json['total_seguro'] != null
+            ? _string(json['total_seguro'])
+            : '0.00',
         totalAPagar: _string(json['total_a_pagar']),
         cronograma: (json['cronograma'] as List? ?? [])
             .whereType<Map>()

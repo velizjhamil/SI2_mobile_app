@@ -27,13 +27,15 @@ class FakeSolicitudService extends SocioService {
   SimulacionCredito simulationResponse = const SimulacionCredito(
     cuotaEstimada: '263.29',
     totalIntereses: '79.72',
-    totalAPagar: '1579.72',
+    totalSeguro: '12.50',
+    totalAPagar: '1592.22',
     cronograma: [
       SimulacionCuota(
         numero: 1,
         capital: '240.79',
         interes: '22.50',
-        cuota: '263.29',
+        seguro: '2.50',
+        cuota: '265.79',
         saldo: '1259.21',
       ),
     ],
@@ -238,7 +240,9 @@ void main() {
 
     expect(find.textContaining('263.29'), findsWidgets);
     expect(find.textContaining('79.72'), findsWidgets);
-    expect(find.textContaining('1579.72'), findsWidgets);
+    expect(find.textContaining('12.50'), findsWidgets);
+    expect(find.textContaining('Total seguro estimado:'), findsOneWidget);
+    expect(find.textContaining('1592.22'), findsWidgets);
 
     // Check continue button
     final continueBtn = find.text('Continuar con la solicitud');

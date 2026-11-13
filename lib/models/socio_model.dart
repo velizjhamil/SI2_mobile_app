@@ -186,10 +186,17 @@ class CreditScheduleItem {
 class CreditSchedule {
   final Map<String, dynamic> credit;
   final List<CreditScheduleItem> installments;
-  const CreditSchedule({required this.credit, required this.installments});
+  final String totalInsurance;
+
+  const CreditSchedule({
+    required this.credit,
+    required this.installments,
+    this.totalInsurance = '0.00',
+  });
 
   factory CreditSchedule.fromJson(Map<String, dynamic> json) => CreditSchedule(
         credit: (json['credito'] as Map?)?.cast<String, dynamic>() ?? {},
+        totalInsurance: _string(json['total_seguro']),
         installments: (json['cuotas'] as List? ?? [])
             .whereType<Map>()
             .map((item) =>
