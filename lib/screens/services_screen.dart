@@ -8,6 +8,7 @@ import 'saldos_extractos_screen.dart';
 import 'socio_screens.dart';
 import 'solicitud_credito_screens.dart';
 import 'campo_screens.dart';
+import 'calificar_servicio_screen.dart';
 import '../services/plan_service.dart';
 
 class ServicesScreen extends StatelessWidget {
@@ -84,6 +85,14 @@ class ServicesScreen extends StatelessWidget {
               'Amortización y recibos digitales', 'Débito Auto',
               onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CreditosScreen()))),
+          _buildServiceTile(
+              context,
+              Icons.rate_review_outlined,
+              'Calificar servicio',
+              'Evalúa nuestra atención y productos',
+              'Feedback',
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CalificarServicioScreen()))),
           const SizedBox(height: 18),
           _buildCategoryHeader(context, 'CRÉDITOS & INVERSIONES DPF',
               'Simuladores y financiamiento digital'),

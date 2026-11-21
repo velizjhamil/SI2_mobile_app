@@ -9,6 +9,7 @@ import '../services/mock_auth_service.dart';
 import '../models/socio_model.dart';
 import '../services/notification_service.dart';
 import '../services/socio_service.dart';
+import 'calificar_servicio_screen.dart';
 
 class SocioProfileScreen extends StatefulWidget {
   final AuthService? authService;
@@ -667,6 +668,25 @@ class _SocioProfileScreenState extends State<SocioProfileScreen> {
                           onChanged: (val) => notif?.setNotificationsEnabled(val),
                         );
                       },
+                    ),
+                    Divider(height: 1, color: borderColor),
+                    ListTile(
+                      leading: _buildIconContainer(
+                          icon: Icons.star_rate_rounded, accentColor: accentColor),
+                      title: Text('Calificar servicio',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: textColor)),
+                      subtitle: Text('Evalúa la atención y consulta tu historial',
+                          style: TextStyle(fontSize: 11, color: subtextColor)),
+                      trailing: Icon(Icons.chevron_right,
+                          size: 18, color: subtextColor),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const CalificarServicioScreen(),
+                        ),
+                      ),
                     ),
                   ],
                 ),
