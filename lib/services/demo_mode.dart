@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import '../models/campo_model.dart';
 import '../models/cuenta_ahorro_model.dart';
+import '../models/extracto_credito_model.dart';
 import '../models/socio_model.dart';
 
 /// Modo demo: datos simulados para presentar los casos de uso móviles
@@ -928,6 +929,8 @@ class DemoSocioData {
         disbursedAmount: '25000.00',
         outstandingBalance: sched1.installments[9].capitalBalance,
         status: 'VIGENTE',
+        creditType: 'MICROCREDITO',
+        amortizationType: 'FRANCES',
         nextInstallment: primeraPendiente == null
             ? null
             : CreditInstallment(
@@ -944,9 +947,140 @@ class DemoSocioData {
         disbursedAmount: '40000.00',
         outstandingBalance: '0.00',
         status: 'CANCELADO',
+        creditType: 'MICROCREDITO_AGROPECUARIO',
+        amortizationType: 'ALEMAN',
         nextInstallment: null,
       ),
     ];
+  }
+
+  Future<ExtractoCredito> extractoCredito(
+    int creditId, {
+    String? desde,
+    String? hasta,
+  }) async {
+    await Future<void>.delayed(_delay);
+    final isCredit1 = creditId == 1;
+    return ExtractoCredito(
+      credito: ExtractoCreditoInfo(
+        id: creditId,
+        numeroCredito: isCredit1 ? 'CRE-2024-0032' : 'CRE-2023-0018',
+        producto: isCredit1 ? 'Crédito Emprendedor' : 'Crédito Agrícola',
+        tipoCredito: isCredit1 ? 'MICROCREDITO' : 'MICROCREDITO_AGROPECUARIO',
+        tipoAmortizacion: isCredit1 ? 'FRANCES' : 'ALEMAN',
+        moneda: 'BOB',
+        estado: isCredit1 ? 'VIGENTE' : 'CANCELADO',
+        montoDesembolsado: isCredit1 ? '25000.00' : '40000.00',
+        saldoPendiente: isCredit1 ? '15400.00' : '0.00',
+        tasaInteresAnual: '12.50',
+        tasaSeguroDesgravamen: '0.05',
+        plazoMeses: 24,
+        fechaDesembolso: '2024-02-15',
+      ),
+      desde: desde ?? '2024-01-01',
+      hasta: hasta ?? '2026-12-31',
+      pagos: const [
+        ExtractoPagoItem(
+          id: 101,
+          fecha: '2024-03-15',
+          numeroRecibo: 'REC-00101',
+          numeroCuota: 1,
+          modalidad: 'VENTANILLA',
+          diasAtraso: 0,
+          capital: '900.00',
+          interes: '260.42',
+          seguro: '12.50',
+          mora: '0.00',
+          total: '1172.92',
+        ),
+        ExtractoPagoItem(
+          id: 102,
+          fecha: '2024-04-15',
+          numeroRecibo: 'REC-00102',
+          numeroCuota: 2,
+          modalidad: 'MOVIL',
+          diasAtraso: 0,
+          capital: '910.00',
+          interes: '251.04',
+          seguro: '12.05',
+          mora: '0.00',
+          total: '1173.09',
+        ),
+      ],
+      totales: const ExtractoTotales(
+        capital: '1810.00',
+        interes: '511.46',
+        seguro: '24.55',
+        mora: '0.00',
+        total: '2346.01',
+        pagos: 2,
+      ),
+      resumen: const ExtractoResumen(
+        cuotasTotal: 24,
+        cuotasPagadas: 2,
+        cuotasVencidas: 0,
+        cuotasPendientes: 22,
+        seguroProgramado: '290.00',
+      ),
+      cuotas: const [
+        ExtractoCuotaItem(
+          numero: 1,
+          fechaVencimiento: '2024-03-15',
+          capital: '900.00',
+          interes: '260.42',
+          seguro: '12.50',
+          montoTotal: '1172.92',
+          saldoCapital: '24100.00',
+          estado: 'PAGADA',
+        ),
+        ExtractoCuotaItem(
+          numero: 2,
+          fechaVencimiento: '2024-04-15',
+          capital: '910.00',
+          interes: '251.04',
+          seguro: '12.05',
+          montoTotal: '1173.09',
+          saldoCapital: '23190.00',
+          estado: 'PAGADA',
+        ),
+        ExtractoCuotaItem(
+          numero: 3,
+          fechaVencimiento: '2024-05-15',
+          capital: '920.00',
+          interes: '241.56',
+          seguro: '11.60',
+          montoTotal: '1173.16',
+          saldoCapital: '22270.00',
+          estado: 'PENDIENTE',
+        ),
+      ],
+    );
+  }
+
+  Future<SocioDashboard> dashboardSocio() async {
+    await Future<void>.delayed(_delay);
+    final cr = await credits();
+    return SocioDashboard(
+      socio: const {'id': 7, 'nombre': 'María Condori Mamani'},
+      ahorros: const SocioDashboardAhorros(
+        cuentas: 2,
+        saldoTotal: '11650.50',
+      ),
+      creditos: cr,
+      pagado: const SocioDashboardPagado(
+        capital: '9600.00',
+        interes: '2400.00',
+        seguro: '180.00',
+        mora: '0.00',
+        total: '12180.00',
+      ),
+      dpf: const SocioDashboardDpf(
+        certificados: 1,
+        capital: '5000.00',
+      ),
+      notificacionesSinLeer: 2,
+      calificacionesEnviadas: 1,
+    );
   }
 
   Future<CreditSchedule?> creditSchedule(int creditId) async {

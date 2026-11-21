@@ -4,11 +4,14 @@ import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/theme_provider.dart';
 import '../models/cuenta_ahorro_model.dart';
+import '../models/socio_model.dart';
 import '../services/cuentas_service.dart';
 import '../services/notification_service.dart';
 import '../services/plan_service.dart';
 import '../services/socio_service.dart';
 import '../widgets/asset_card.dart';
+import 'calificar_servicio_screen.dart';
+import 'extracto_credito_screen.dart';
 import 'saldos_extractos_screen.dart';
 import 'socio_screens.dart';
 import 'solicitud_credito_screens.dart';
@@ -21,8 +24,13 @@ import 'transferencia_screen.dart';
 /// hardcodeados. [cuentasService] se puede inyectar en tests con un fake.
 class DashboardScreen extends StatefulWidget {
   final CuentasService? cuentasService;
+  final SocioService? socioService;
 
-  const DashboardScreen({super.key, this.cuentasService});
+  const DashboardScreen({
+    super.key,
+    this.cuentasService,
+    this.socioService,
+  });
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -30,13 +38,17 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   late final CuentasService _service;
+  late final SocioService _socioService;
   late Future<CuentasResult> _future;
+  late Future<SocioResult<SocioDashboard>> _dashboardFuture;
 
   @override
   void initState() {
     super.initState();
     _service = widget.cuentasService ?? CuentasService();
+    _socioService = widget.socioService ?? SocioService();
     _future = _service.listarMisCuentas();
+    _dashboardFuture = _socioService.dashboardSocio();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -53,6 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _recargar() {
     setState(() {
       _future = _service.listarMisCuentas();
+      _dashboardFuture = _socioService.dashboardSocio();
     });
   }
 
@@ -67,6 +80,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isDark = Provider.of<ThemeProvider>(context).isDark;
     final bgColor =
         isDark ? AppColors.darkBackground : AppColors.lightBackground;
+    final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final subtextColor =
         isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final accentColor = isDark ? AppColors.primary : AppColors.forestGreen;
@@ -171,62 +186,203 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           _recargar();
-          await _future;
+          await Future.wait([_future, _dashboardFuture]);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Sección Valor del Portafolio (saldo real)
-            Text(
-              'SALDO TOTAL DISPONIBLE',
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Sección Valor del Portafolio (saldo real)
+              Text(
+                'SALDO TOTAL DISPONIBLE',
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                  color: subtextColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              FutureBuilder<CuentasResult>(
+                future: _future,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const _CuentasLoading();
+                  }
+                  if (snapshot.hasError) {
+                    return _CuentasError(
+                      mensaje:
+                          'No se pudieron cargar los saldos. Intente nuevamente.',
+                      onRetry: _recargar,
+                    );
+                  }
+                  final result = snapshot.data;
+                  if (result == null || !result.success) {
+                    return _CuentasError(
+                      mensaje: result?.error ??
+                          'No se pudieron cargar los saldos. Intente nuevamente.',
+                      onRetry: _recargar,
+                    );
+                  }
+                  if (result.cuentas.isEmpty) {
+                    return _CuentasEmpty(onRetry: _recargar);
+                  }
+                  return _CuentasBody(
+                    cuentas: result.cuentas,
+                    onRetry: _recargar,
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Banner Calificar Servicio
+              _FeedbackShortcutBanner(
+                cardBg: cardBg,
+                borderColor: borderColor,
+                textColor: textColor,
+                subtextColor: subtextColor,
+                accentColor: accentColor,
+                isDark: isDark,
+              ),
+              const SizedBox(height: 18),
+
+              // Resumen Socio (GET /dashboard/socio)
+              FutureBuilder<SocioResult<SocioDashboard>>(
+                future: _dashboardFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return _SocioDashboardLoading(
+                      cardBg: cardBg,
+                      borderColor: borderColor,
+                      subtextColor: subtextColor,
+                    );
+                  }
+                  final res = snapshot.data;
+                  if (res == null || !res.success || res.value == null) {
+                    return _SocioDashboardError(
+                      mensaje: res?.error ??
+                          'No se pudo cargar el resumen del socio.',
+                      cardBg: cardBg,
+                      borderColor: borderColor,
+                      subtextColor: subtextColor,
+                      onRetry: _recargar,
+                    );
+                  }
+                  return _SocioDashboardBody(
+                    data: res.value!,
+                    cardBg: cardBg,
+                    borderColor: borderColor,
+                    textColor: textColor,
+                    subtextColor: subtextColor,
+                    accentColor: accentColor,
+                    isDark: isDark,
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedbackShortcutBanner extends StatelessWidget {
+  final Color cardBg;
+  final Color borderColor;
+  final Color textColor;
+  final Color subtextColor;
+  final Color accentColor;
+  final bool isDark;
+
+  const _FeedbackShortcutBanner({
+    required this.cardBg,
+    required this.borderColor,
+    required this.textColor,
+    required this.subtextColor,
+    required this.accentColor,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF1B382B), const Color(0xFF14241C)]
+              : [const Color(0xFFE8F5E9), Colors.white],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? AppColors.darkBorder
+              : AppColors.forestGreen.withValues(alpha: 0.25),
+        ),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.forestGreen,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.star, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Calificar servicio',
+                  style: GoogleFonts.manrope(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                Text(
+                  'Ayúdanos a mejorar evaluando la atención recibida.',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10.5,
+                    color: subtextColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CalificarServicioScreen()),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.forestGreen,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: const Size(60, 32),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Calificar',
               style: GoogleFonts.dmSans(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-                color: subtextColor,
               ),
             ),
-            const SizedBox(height: 4),
-            FutureBuilder<CuentasResult>(
-              future: _future,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const _CuentasLoading();
-                }
-                if (snapshot.hasError) {
-                  return _CuentasError(
-                    mensaje:
-                        'No se pudieron cargar los saldos. Intente nuevamente.',
-                    onRetry: _recargar,
-                  );
-                }
-                final result = snapshot.data;
-                if (result == null || !result.success) {
-                  return _CuentasError(
-                    mensaje: result?.error ??
-                        'No se pudieron cargar los saldos. Intente nuevamente.',
-                    onRetry: _recargar,
-                  );
-                }
-                if (result.cuentas.isEmpty) {
-                  return _CuentasEmpty(onRetry: _recargar);
-                }
-                return _CuentasBody(
-                  cuentas: result.cuentas,
-                  onRetry: _recargar,
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          ),
+        ],
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 /// Cuerpo con datos reales: total, bloqueado, distribución y cuentas.
@@ -1087,6 +1243,515 @@ class _CuentasEmpty extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SocioDashboardLoading extends StatelessWidget {
+  final Color cardBg;
+  final Color borderColor;
+  final Color subtextColor;
+
+  const _SocioDashboardLoading({
+    required this.cardBg,
+    required this.borderColor,
+    required this.subtextColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Cargando resumen de finanzas...',
+            style: GoogleFonts.dmSans(fontSize: 12, color: subtextColor),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SocioDashboardError extends StatelessWidget {
+  final String mensaje;
+  final Color cardBg;
+  final Color borderColor;
+  final Color subtextColor;
+  final VoidCallback onRetry;
+
+  const _SocioDashboardError({
+    required this.mensaje,
+    required this.cardBg,
+    required this.borderColor,
+    required this.subtextColor,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, size: 18, color: Colors.orangeAccent),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              mensaje,
+              style: GoogleFonts.dmSans(fontSize: 11.5, color: subtextColor),
+            ),
+          ),
+          TextButton(
+            onPressed: onRetry,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(50, 28),
+            ),
+            child: const Text('Reintentar', style: TextStyle(fontSize: 11.5)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SocioDashboardBody extends StatelessWidget {
+  final SocioDashboard data;
+  final Color cardBg;
+  final Color borderColor;
+  final Color textColor;
+  final Color subtextColor;
+  final Color accentColor;
+  final bool isDark;
+
+  const _SocioDashboardBody({
+    required this.data,
+    required this.cardBg,
+    required this.borderColor,
+    required this.textColor,
+    required this.subtextColor,
+    required this.accentColor,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Notificaciones sin leer (si hay)
+        if (data.notificacionesSinLeer > 0) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.notifications_active, color: Colors.blue, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Tienes ${data.notificacionesSinLeer} ${data.notificacionesSinLeer == 1 ? "notificación pendiente" : "notificaciones pendientes"}',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => showNotificationTray(context),
+                  child: Text(
+                    'Ver >',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // 2. Resumen Ahorros y DPF
+        Text(
+          'RESUMEN DE PRODUCTOS',
+          style: GoogleFonts.dmSans(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+            color: subtextColor,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Ahorros',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: subtextColor,
+                          ),
+                        ),
+                        Icon(Icons.savings, size: 16, color: accentColor),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Bs. ${data.ahorros.saldoTotal}',
+                      style: GoogleFonts.manrope(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      '${data.ahorros.cuentas} ${data.ahorros.cuentas == 1 ? "cuenta activa" : "cuentas activas"}',
+                      style: GoogleFonts.dmSans(fontSize: 10.5, color: subtextColor),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'DPF',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: subtextColor,
+                          ),
+                        ),
+                        Icon(Icons.lock_clock, size: 16, color: accentColor),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Bs. ${data.dpf.capital}',
+                      style: GoogleFonts.manrope(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      '${data.dpf.certificados} ${data.dpf.certificados == 1 ? "depósito vigente" : "depósitos vigentes"}',
+                      style: GoogleFonts.dmSans(fontSize: 10.5, color: subtextColor),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // 3. Total Pagado (Desglose)
+        Text(
+          'TOTAL PAGADO',
+          style: GoogleFonts.dmSans(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+            color: subtextColor,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderColor),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Histórico consolidado:',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: subtextColor,
+                    ),
+                  ),
+                  Text(
+                    'Bs. ${data.pagado.total}',
+                    style: GoogleFonts.manrope(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Divider(height: 1, color: borderColor),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _metricSub('Capital', 'Bs. ${data.pagado.capital}'),
+                  ),
+                  Expanded(
+                    child: _metricSub('Interés', 'Bs. ${data.pagado.interes}'),
+                  ),
+                  Expanded(
+                    child: _metricSub('Seguro', 'Bs. ${data.pagado.seguro}'),
+                  ),
+                  Expanded(
+                    child: _metricSub('Mora', 'Bs. ${data.pagado.mora}'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 4. Créditos Vigentes
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'TUS CRÉDITOS',
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.0,
+                color: subtextColor,
+              ),
+            ),
+            Text(
+              '${data.creditos.length} ${data.creditos.length == 1 ? "crédito" : "créditos"}',
+              style: GoogleFonts.dmSans(fontSize: 11, color: accentColor, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        if (data.creditos.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: accentColor, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'No tienes créditos vigentes registrados.',
+                    style: GoogleFonts.dmSans(fontSize: 12, color: subtextColor),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          for (final cr in data.creditos) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          cr.product,
+                          style: GoogleFonts.manrope(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '${cr.currency} ${cr.outstandingBalance}',
+                        style: GoogleFonts.manrope(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Tipo: ${cr.creditTypeLabel}',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: accentColor,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurfaceHigh : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Sistema: ${cr.amortizationTypeLabel}',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: subtextColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          cr.nextInstallment != null
+                              ? 'Próxima cuota #${cr.nextInstallment!.number} (${cr.nextInstallment!.dueDate}): ${cr.currency} ${cr.nextInstallment!.totalAmount}'
+                              : 'Al día: Sin cuotas pendientes',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            color: cr.nextInstallment != null ? accentColor : const Color(0xFF2E7D32),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ExtractoCreditoScreen(
+                                creditId: cr.id,
+                                credit: cr,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Text(
+                            'Extracto >',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: accentColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+      ],
+    );
+  }
+
+  Widget _metricSub(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 9.5,
+            fontWeight: FontWeight.bold,
+            color: subtextColor,
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.manrope(
+            fontSize: 11.5,
+            fontWeight: FontWeight.bold,
+            color: textColor,
+          ),
+        ),
+      ],
     );
   }
 }

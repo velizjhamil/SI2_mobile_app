@@ -106,6 +106,8 @@ class SocioCredit {
   final String outstandingBalance;
   final String status;
   final CreditInstallment? nextInstallment;
+  final String? creditType;
+  final String? amortizationType;
 
   const SocioCredit({
     required this.id,
@@ -116,7 +118,45 @@ class SocioCredit {
     required this.outstandingBalance,
     required this.status,
     required this.nextInstallment,
+    this.creditType,
+    this.amortizationType,
   });
+
+  String get creditTypeLabel {
+    if (creditType == null || creditType!.trim().isEmpty) {
+      return 'Sin clasificar';
+    }
+    switch (creditType!.trim().toUpperCase()) {
+      case 'CONSUMO':
+        return 'Consumo';
+      case 'MICROCREDITO':
+        return 'Microcrédito';
+      case 'MICROCREDITO_AGROPECUARIO':
+        return 'Microcrédito agropecuario';
+      case 'VIVIENDA_HIPOTECARIA':
+        return 'Vivienda hipotecaria';
+      case 'VIVIENDA_SIN_GARANTIA':
+        return 'Vivienda sin garantía';
+      case 'COMERCIAL':
+        return 'Comercial';
+      case 'EDUCATIVO':
+        return 'Educativo';
+      case 'VEHICULAR':
+        return 'Vehicular';
+      default:
+        return creditType!;
+    }
+  }
+
+  String get amortizationTypeLabel {
+    if (amortizationType == null || amortizationType!.trim().isEmpty) {
+      return '-';
+    }
+    final upper = amortizationType!.trim().toUpperCase();
+    if (upper.contains('ALEMAN')) return 'Alemán';
+    if (upper.contains('FRANCES') || upper.contains('FRANC')) return 'Francés';
+    return amortizationType!;
+  }
 
   factory SocioCredit.fromJson(Map<String, dynamic> json) => SocioCredit(
         id: _int(json['id']),
@@ -129,6 +169,101 @@ class SocioCredit {
         nextInstallment: (json['proxima_cuota'] as Map?)
             ?.cast<String, dynamic>()
             .let(CreditInstallment.fromJson),
+        creditType: json['tipo_credito'] != null
+            ? _string(json['tipo_credito'])
+            : null,
+        amortizationType: json['tipo_amortizacion'] != null
+            ? _string(json['tipo_amortizacion'])
+            : null,
+      );
+}
+
+class SocioDashboardAhorros {
+  final int cuentas;
+  final String saldoTotal;
+
+  const SocioDashboardAhorros({required this.cuentas, required this.saldoTotal});
+
+  factory SocioDashboardAhorros.fromJson(Map<String, dynamic> json) =>
+      SocioDashboardAhorros(
+        cuentas: _int(json['cuentas']),
+        saldoTotal: _string(json['saldo_total']),
+      );
+}
+
+class SocioDashboardPagado {
+  final String capital;
+  final String interes;
+  final String seguro;
+  final String mora;
+  final String total;
+
+  const SocioDashboardPagado({
+    required this.capital,
+    required this.interes,
+    required this.seguro,
+    required this.mora,
+    required this.total,
+  });
+
+  factory SocioDashboardPagado.fromJson(Map<String, dynamic> json) =>
+      SocioDashboardPagado(
+        capital: _string(json['capital']),
+        interes: _string(json['interes']),
+        seguro: _string(json['seguro']),
+        mora: _string(json['mora']),
+        total: _string(json['total']),
+      );
+}
+
+class SocioDashboardDpf {
+  final int certificados;
+  final String capital;
+
+  const SocioDashboardDpf({required this.certificados, required this.capital});
+
+  factory SocioDashboardDpf.fromJson(Map<String, dynamic> json) =>
+      SocioDashboardDpf(
+        certificados: _int(json['certificados']),
+        capital: _string(json['capital']),
+      );
+}
+
+class SocioDashboard {
+  final Map<String, dynamic> socio;
+  final SocioDashboardAhorros ahorros;
+  final List<SocioCredit> creditos;
+  final SocioDashboardPagado pagado;
+  final SocioDashboardDpf dpf;
+  final int notificacionesSinLeer;
+  final int calificacionesEnviadas;
+
+  const SocioDashboard({
+    required this.socio,
+    required this.ahorros,
+    required this.creditos,
+    required this.pagado,
+    required this.dpf,
+    required this.notificacionesSinLeer,
+    required this.calificacionesEnviadas,
+  });
+
+  String get socioNombre => _string(socio['nombre']);
+
+  factory SocioDashboard.fromJson(Map<String, dynamic> json) => SocioDashboard(
+        socio: (json['socio'] as Map?)?.cast<String, dynamic>() ?? {},
+        ahorros: SocioDashboardAhorros.fromJson(
+            (json['ahorros'] as Map?)?.cast<String, dynamic>() ?? {}),
+        creditos: (json['creditos'] as List? ?? [])
+            .whereType<Map>()
+            .map((item) => SocioCredit.fromJson(item.cast<String, dynamic>()))
+            .toList(),
+        pagado: SocioDashboardPagado.fromJson(
+            (json['pagado'] as Map?)?.cast<String, dynamic>() ?? {}),
+        dpf: SocioDashboardDpf.fromJson(
+            (json['dpf'] as Map?)?.cast<String, dynamic>() ?? {}),
+        notificacionesSinLeer: _int(json['notificaciones_sin_leer']),
+        calificacionesEnviadas: _int(json['calificaciones_enviadas']),
       );
 }
 

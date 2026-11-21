@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/socio_model.dart';
 import '../models/comprobante_model.dart';
+import '../models/extracto_credito_model.dart';
 import 'demo_mode.dart';
 import 'mock_auth_service.dart';
 import 'session_manager.dart';
@@ -50,6 +51,36 @@ class SocioService {
       return SocioResult.success(await DemoMode.socio.credits());
     }
     return _getList('/socio/creditos', SocioCredit.fromJson, client);
+  }
+
+  Future<SocioResult<ExtractoCredito>> extractoCredito(
+    int creditId, {
+    String? desde,
+    String? hasta,
+    http.Client? client,
+  }) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(
+        await DemoMode.socio.extractoCredito(creditId, desde: desde, hasta: hasta),
+      );
+    }
+    final query = <String, String>{
+      if (desde != null && desde.isNotEmpty) 'desde': desde,
+      if (hasta != null && hasta.isNotEmpty) 'hasta': hasta,
+    };
+    return _get(
+      '/socio/creditos/$creditId/extracto',
+      query.isEmpty ? null : query,
+      ExtractoCredito.fromJson,
+      client,
+    );
+  }
+
+  Future<SocioResult<SocioDashboard>> dashboardSocio({http.Client? client}) async {
+    if (DemoMode.enabled) {
+      return SocioResult.success(await DemoMode.socio.dashboardSocio());
+    }
+    return _get('/dashboard/socio', null, SocioDashboard.fromJson, client);
   }
 
   Future<SocioResult<Map<String, dynamic>>> debt(int creditId,

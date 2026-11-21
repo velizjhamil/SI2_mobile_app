@@ -11,6 +11,7 @@ import '../services/comprobantes_service.dart';
 import '../services/notification_service.dart';
 import '../services/socio_service.dart';
 import 'comprobante_screen.dart';
+import 'extracto_credito_screen.dart';
 
 class CuentaExtractosScreen extends StatefulWidget {
   final CuentasService? service;
@@ -432,6 +433,48 @@ class _CreditosScreenState extends State<CreditosScreen> {
                                       color: subtextColor,
                                     ),
                                   ),
+                                  const SizedBox(height: 4),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: accentColor.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Tipo: ${credit.creditTypeLabel}',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: accentColor,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? AppColors.darkSurfaceHigh
+                                              : Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(color: borderColor),
+                                        ),
+                                        child: Text(
+                                          'Sistema: ${credit.amortizationTypeLabel}',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: subtextColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
@@ -722,6 +765,40 @@ class _CreditosScreenState extends State<CreditosScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: accentColor,
+                              side: BorderSide(
+                                  color: accentColor.withValues(alpha: 0.5)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            icon: const Icon(Icons.receipt_long, size: 18),
+                            label: Text(
+                              'Extracto de pagos',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ExtractoCreditoScreen(
+                                    creditId: credit.id,
+                                    credit: credit,
+                                    service: _service,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -842,6 +919,21 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
           ),
           actions: [
             IconButton(
+              icon: const Icon(Icons.receipt_long),
+              tooltip: 'Ver extracto de pagos',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ExtractoCreditoScreen(
+                      creditId: widget.creditId,
+                      credit: widget.credit,
+                      service: _service,
+                    ),
+                  ),
+                );
+              },
+            ),
+            IconButton(
               icon: Icon(Icons.refresh, color: accentColor),
               onPressed: _recargar,
               tooltip: 'Actualizar cuotas',
@@ -948,6 +1040,12 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
                             if (saldoPendiente.isNotEmpty)
                               _miniBadge('SALDO RESTANTE',
                                   '$currency $saldoPendiente', textColor, isDark),
+                            if (widget.credit != null) ...[
+                              _miniBadge('TIPO CRÉDITO',
+                                  widget.credit!.creditTypeLabel, accentColor, isDark),
+                              _miniBadge('AMORTIZACIÓN',
+                                  widget.credit!.amortizationTypeLabel, textColor, isDark),
+                            ],
                           ],
                         ),
                       ],
