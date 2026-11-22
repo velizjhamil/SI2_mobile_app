@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import '../models/socio_model.dart';
 import '../models/comprobante_model.dart';
 import '../models/extracto_credito_model.dart';
+import '../models/reclamo_model.dart';
+import '../models/reprogramacion_model.dart';
 import 'demo_mode.dart';
 import 'mock_auth_service.dart';
 import 'session_manager.dart';
@@ -241,6 +243,7 @@ class SocioService {
     required String destination,
     String? destinationDetail,
     required DatosDeclarados declaredData,
+    ViviendaSocialData? viviendaSocial,
     http.Client? client,
   }) async {
     if (DemoMode.enabled) {
@@ -256,6 +259,8 @@ class SocioService {
       if (destinationDetail != null && destinationDetail.trim().isNotEmpty)
         'destino_detalle': destinationDetail.trim(),
       'datos_declarados': declaredData.toJson(),
+      if (viviendaSocial != null)
+        'vivienda_social': viviendaSocial.toJson(),
     };
     final result = await _request(
       'POST',
@@ -308,6 +313,106 @@ class SocioService {
     );
     return result.success
         ? SocioResult.success(SolicitudCreditoItem.fromJson(result.value!))
+        : SocioResult.failure(result.error);
+  }
+
+  Future<SocioResult<List<ReclamoItem>>> claims({http.Client? client}) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.success([]);
+    }
+    return _getList('/socio/reclamos', ReclamoItem.fromJson, client);
+  }
+
+  Future<SocioResult<ReclamoItem>> createClaim({
+    required String tipo,
+    required String descripcion,
+    int? creditoId,
+    http.Client? client,
+  }) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.failure(
+        'Registro de reclamos no disponible en modo demo.',
+      );
+    }
+    final body = {
+      'tipo': tipo,
+      'descripcion': descripcion,
+      if (creditoId != null) 'credito_id': creditoId,
+    };
+    final result = await _request(
+      'POST',
+      '/socio/reclamos',
+      body: body,
+      client: client,
+    );
+    return result.success
+        ? SocioResult.success(ReclamoItem.fromJson(result.value!))
+        : SocioResult.failure(result.error);
+  }
+
+  Future<SocioResult<ReclamoItem>> registerConformity(
+    int reclamoId, {
+    required bool conforme,
+    String? motivo,
+    http.Client? client,
+  }) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.failure(
+        'Conformidad no disponible en modo demo.',
+      );
+    }
+    final body = {
+      'conforme': conforme,
+      if (motivo != null && motivo.trim().isNotEmpty) 'motivo': motivo.trim(),
+    };
+    final result = await _request(
+      'POST',
+      '/socio/reclamos/$reclamoId/conformidad',
+      body: body,
+      client: client,
+    );
+    return result.success
+        ? SocioResult.success(ReclamoItem.fromJson(result.value!))
+        : SocioResult.failure(result.error);
+  }
+
+  Future<SocioResult<List<ReprogramacionCreditoItem>>> creditReschedulingHistory(
+    int creditId, {
+    http.Client? client,
+  }) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.success([]);
+    }
+    return _getList(
+      '/socio/creditos/$creditId/reprogramaciones',
+      ReprogramacionCreditoItem.fromJson,
+      client,
+    );
+  }
+
+  Future<SocioResult<ReprogramacionCreditoItem>> requestRescheduling(
+    int creditId, {
+    required int nuevoPlazoMeses,
+    required String motivo,
+    http.Client? client,
+  }) async {
+    if (DemoMode.enabled) {
+      return const SocioResult.failure(
+        'Reprogramación no disponible en modo demo.',
+      );
+    }
+    final body = {
+      'nuevo_plazo_meses': nuevoPlazoMeses,
+      'motivo': motivo,
+    };
+    final result = await _request(
+      'POST',
+      '/socio/creditos/$creditId/reprogramaciones',
+      body: body,
+      client: client,
+    );
+    return result.success
+        ? SocioResult.success(ReprogramacionCreditoItem.fromJson(result.value!))
         : SocioResult.failure(result.error);
   }
 

@@ -301,7 +301,8 @@ class CreditScheduleItem {
   bool get isPaid =>
       status.toUpperCase() == 'PAGADA' || status.toUpperCase() == 'PAGADO';
   bool get isVencida => status.toUpperCase() == 'VENCIDA';
-  bool get isPendiente => !isPaid && !isVencida;
+  bool get isReprogramada => status.toUpperCase() == 'REPROGRAMADA';
+  bool get isPendiente => !isPaid && !isVencida && !isReprogramada;
 
   factory CreditScheduleItem.fromJson(Map<String, dynamic> json) =>
       CreditScheduleItem(
@@ -322,16 +323,22 @@ class CreditSchedule {
   final Map<String, dynamic> credit;
   final List<CreditScheduleItem> installments;
   final String totalInsurance;
+  final String? tea;
+  final String? teac;
 
   const CreditSchedule({
     required this.credit,
     required this.installments,
     this.totalInsurance = '0.00',
+    this.tea,
+    this.teac,
   });
 
   factory CreditSchedule.fromJson(Map<String, dynamic> json) => CreditSchedule(
         credit: (json['credito'] as Map?)?.cast<String, dynamic>() ?? {},
         totalInsurance: _string(json['total_seguro']),
+        tea: json['tea'] != null ? _string(json['tea']) : null,
+        teac: json['teac'] != null ? _string(json['teac']) : null,
         installments: (json['cuotas'] as List? ?? [])
             .whereType<Map>()
             .map((item) =>

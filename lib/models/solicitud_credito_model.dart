@@ -2,6 +2,31 @@ String _string(dynamic value) => value?.toString() ?? '';
 int _int(dynamic value) =>
     value is num ? value.toInt() : int.tryParse(_string(value)) ?? 0;
 
+class ViviendaSocialData {
+  final String valorVivienda;
+  final String tipoInmueble;
+  final bool unicaVivienda;
+
+  const ViviendaSocialData({
+    required this.valorVivienda,
+    required this.tipoInmueble,
+    required this.unicaVivienda,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'valor_vivienda': double.tryParse(valorVivienda) ?? valorVivienda,
+        'tipo_inmueble': tipoInmueble,
+        'unica_vivienda': unicaVivienda,
+      };
+
+  factory ViviendaSocialData.fromJson(Map<String, dynamic> json) =>
+      ViviendaSocialData(
+        valorVivienda: _string(json['valor_vivienda']),
+        tipoInmueble: _string(json['tipo_inmueble']),
+        unicaVivienda: json['unica_vivienda'] == true,
+      );
+}
+
 class ProductoCreditoSocio {
   final int id;
   final String codigo;
@@ -15,6 +40,7 @@ class ProductoCreditoSocio {
   final String tasaSeguroDesgravamen;
   final String tipoAmortizacion;
   final bool requiereGarantia;
+  final String? tipoCreditoAsfi;
 
   const ProductoCreditoSocio({
     required this.id,
@@ -29,7 +55,13 @@ class ProductoCreditoSocio {
     this.tasaSeguroDesgravamen = '0.00',
     required this.tipoAmortizacion,
     required this.requiereGarantia,
+    this.tipoCreditoAsfi,
   });
+
+  bool get isViviendaSocial =>
+      (tipoCreditoAsfi ?? '').toUpperCase() == 'VIVIENDA_SOCIAL' ||
+      nombre.toUpperCase().contains('VIVIENDA SOCIAL') ||
+      nombre.toUpperCase().contains('VIS');
 
   factory ProductoCreditoSocio.fromJson(Map<String, dynamic> json) =>
       ProductoCreditoSocio(
@@ -47,6 +79,11 @@ class ProductoCreditoSocio {
             : '0.00',
         tipoAmortizacion: _string(json['tipo_amortizacion']),
         requiereGarantia: json['requiere_garantia'] == true,
+        tipoCreditoAsfi: json['tipo_credito_asfi'] != null
+            ? _string(json['tipo_credito_asfi'])
+            : (json['tipo_credito'] != null
+                ? _string(json['tipo_credito'])
+                : null),
       );
 }
 
@@ -83,6 +120,8 @@ class SimulacionCredito {
   final String totalIntereses;
   final String totalSeguro;
   final String totalAPagar;
+  final String? tea;
+  final String? teac;
   final List<SimulacionCuota> cronograma;
 
   const SimulacionCredito({
@@ -90,6 +129,8 @@ class SimulacionCredito {
     required this.totalIntereses,
     this.totalSeguro = '0.00',
     required this.totalAPagar,
+    this.tea,
+    this.teac,
     required this.cronograma,
   });
 
@@ -101,6 +142,8 @@ class SimulacionCredito {
             ? _string(json['total_seguro'])
             : '0.00',
         totalAPagar: _string(json['total_a_pagar']),
+        tea: json['tea'] != null ? _string(json['tea']) : null,
+        teac: json['teac'] != null ? _string(json['teac']) : null,
         cronograma: (json['cronograma'] as List? ?? [])
             .whereType<Map>()
             .map((e) => SimulacionCuota.fromJson(e.cast<String, dynamic>()))

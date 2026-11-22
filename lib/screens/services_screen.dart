@@ -9,6 +9,7 @@ import 'socio_screens.dart';
 import 'solicitud_credito_screens.dart';
 import 'campo_screens.dart';
 import 'calificar_servicio_screen.dart';
+import 'reclamos_screen.dart';
 import '../services/plan_service.dart';
 
 class ServicesScreen extends StatelessWidget {
@@ -93,6 +94,14 @@ class ServicesScreen extends StatelessWidget {
               'Feedback',
               onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CalificarServicioScreen()))),
+          _buildServiceTile(
+              context,
+              Icons.gavel_outlined,
+              'Punto de Reclamo (Ley 393)',
+              'Atención y apelaciones ante la ASFI',
+              'Ley 393',
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ReclamosScreen()))),
           const SizedBox(height: 18),
           _buildCategoryHeader(context, 'CRÉDITOS & INVERSIONES DPF',
               'Simuladores y financiamiento digital'),

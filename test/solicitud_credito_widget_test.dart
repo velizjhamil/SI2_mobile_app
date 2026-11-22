@@ -134,6 +134,7 @@ class FakeSolicitudService extends SocioService {
     required String destination,
     String? destinationDetail,
     required DatosDeclarados declaredData,
+    ViviendaSocialData? viviendaSocial,
     http.Client? client,
   }) async {
     createCalls++;

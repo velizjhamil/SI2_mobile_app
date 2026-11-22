@@ -12,6 +12,7 @@ import '../services/notification_service.dart';
 import '../services/socio_service.dart';
 import 'comprobante_screen.dart';
 import 'extracto_credito_screen.dart';
+import 'reprogramacion_screen.dart';
 
 class CuentaExtractosScreen extends StatefulWidget {
   final CuentasService? service;
@@ -919,6 +920,21 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
           ),
           actions: [
             IconButton(
+              icon: const Icon(Icons.change_circle_outlined),
+              tooltip: 'Reprogramación de crédito',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ReprogramacionScreen(
+                      creditId: widget.creditId,
+                      credit: widget.credit,
+                      service: _service,
+                    ),
+                  ),
+                );
+              },
+            ),
+            IconButton(
               icon: const Icon(Icons.receipt_long),
               tooltip: 'Ver extracto de pagos',
               onPressed: () {
@@ -963,6 +979,8 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
             final totalCuotas = installments.length;
             final pagadas = installments.where((i) => i.isPaid).length;
             final vencidas = installments.where((i) => i.isVencida).length;
+            final reprogramadas =
+                installments.where((i) => i.isReprogramada).length;
             final pendientes = installments.where((i) => i.isPendiente).length;
             final creditData = schedule.credit;
             final currency = creditData['moneda']?.toString() ??
@@ -1033,10 +1051,21 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
                                 'PAGADAS', '$pagadas', const Color(0xFF2E7D32), isDark),
                             _miniBadge(
                                 'VENCIDAS', '$vencidas', const Color(0xFFC62828), isDark),
+                            if (reprogramadas > 0)
+                              _miniBadge('REPROGRAMADAS', '$reprogramadas',
+                                  const Color(0xFF7B1FA2), isDark),
                             _miniBadge(
                                 'PENDIENTES', '$pendientes', const Color(0xFF1565C0), isDark),
                             _miniBadge('TOTAL SEGURO',
                                 '$currency ${schedule.totalInsurance}', accentColor, isDark),
+                            if (schedule.tea != null &&
+                                schedule.tea!.isNotEmpty)
+                              _miniBadge('TEA', '${schedule.tea}%',
+                                  accentColor, isDark),
+                            if (schedule.teac != null &&
+                                schedule.teac!.isNotEmpty)
+                              _miniBadge('TEAC', '${schedule.teac}%',
+                                  const Color(0xFF7B1FA2), isDark),
                             if (saldoPendiente.isNotEmpty)
                               _miniBadge('SALDO RESTANTE',
                                   '$currency $saldoPendiente', textColor, isDark),
@@ -1049,6 +1078,43 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
                           ],
                         ),
                       ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: isDark
+                            ? const Color(0xFFCE93D8)
+                            : const Color(0xFF7B1FA2),
+                        side: BorderSide(
+                          color: isDark
+                              ? const Color(0xFF7B1FA2)
+                              : const Color(0xFFCE93D8),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      icon: const Icon(Icons.change_circle_outlined, size: 20),
+                      label: const Text(
+                        'Reprogramación (Solicitud e Historial)',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ReprogramacionScreen(
+                              creditId: widget.creditId,
+                              credit: widget.credit,
+                              service: _service,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
 
@@ -1204,6 +1270,13 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
           isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32);
       statusIcon = Icons.check_circle_rounded;
       statusLabel = 'PAGADA';
+    } else if (item.isReprogramada) {
+      statusBg =
+          isDark ? const Color(0xFF32193D) : const Color(0xFFF3E5F5);
+      statusColor =
+          isDark ? const Color(0xFFCE93D8) : const Color(0xFF7B1FA2);
+      statusIcon = Icons.update_rounded;
+      statusLabel = 'REPROGRAMADA';
     } else if (item.isVencida) {
       statusBg =
           isDark ? const Color(0xFF3E1F24) : const Color(0xFFFFEBEE);
@@ -1227,11 +1300,15 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: item.isVencida
-              ? const Color(0xFFEF5350).withValues(alpha: 0.5)
-              : (item.isPaid
-                  ? const Color(0xFF81C784).withValues(alpha: 0.3)
-                  : borderColor),
+          color: item.isReprogramada
+              ? (isDark
+                  ? const Color(0xFF7B1FA2).withValues(alpha: 0.5)
+                  : const Color(0xFFCE93D8))
+              : (item.isVencida
+                  ? const Color(0xFFEF5350).withValues(alpha: 0.5)
+                  : (item.isPaid
+                      ? const Color(0xFF81C784).withValues(alpha: 0.3)
+                      : borderColor)),
           width: item.isVencida ? 1.5 : 1.0,
         ),
       ),
@@ -1370,7 +1447,28 @@ class _CronogramaCreditoScreenState extends State<CronogramaCreditoScreen> {
                   ),
                 ],
               ),
-              if (!item.isPaid)
+              if (item.isReprogramada)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF32193D)
+                        : const Color(0xFFF3E5F5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Cuota reprogramada',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? const Color(0xFFCE93D8)
+                          : const Color(0xFF7B1FA2),
+                    ),
+                  ),
+                )
+              else if (!item.isPaid)
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: item.isVencida

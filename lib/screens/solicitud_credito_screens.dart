@@ -600,6 +600,37 @@ class _SimuladorCreditoScreenState extends State<SimuladorCreditoScreen> {
                       ),
                     ],
                   ),
+                  if (_simulacion!.tea != null &&
+                      _simulacion!.tea!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Tasa Efectiva Anual (TEA):'),
+                        Text(
+                          '${_simulacion!.tea}%',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (_simulacion!.teac != null &&
+                      _simulacion!.teac!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Costo Efectivo Anual (TEAC):'),
+                        Text(
+                          '${_simulacion!.teac}%',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: accentColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -705,6 +736,9 @@ class _FormularioSolicitudScreenState extends State<FormularioSolicitudScreen> {
   String _fuenteIngresos = 'DEPENDIENTE';
   final _ingresosCtrl = TextEditingController();
   final _egresosCtrl = TextEditingController();
+  final _valorViviendaCtrl = TextEditingController();
+  String _tipoInmueble = 'CASA';
+  bool _unicaVivienda = true;
 
   final List<String> _destinos = const [
     'CONSUMO',
@@ -729,6 +763,7 @@ class _FormularioSolicitudScreenState extends State<FormularioSolicitudScreen> {
     _actividadCtrl.dispose();
     _ingresosCtrl.dispose();
     _egresosCtrl.dispose();
+    _valorViviendaCtrl.dispose();
     super.dispose();
   }
 
@@ -744,6 +779,14 @@ class _FormularioSolicitudScreenState extends State<FormularioSolicitudScreen> {
       fuenteIngresos: _fuenteIngresos,
     );
 
+    final viviendaSocial = widget.producto.isViviendaSocial
+        ? ViviendaSocialData(
+            valorVivienda: _valorViviendaCtrl.text.trim(),
+            tipoInmueble: _tipoInmueble,
+            unicaVivienda: _unicaVivienda,
+          )
+        : null;
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -757,6 +800,7 @@ class _FormularioSolicitudScreenState extends State<FormularioSolicitudScreen> {
               ? _destinoDetalleCtrl.text.trim()
               : null,
           datosDeclarados: declared,
+          viviendaSocial: viviendaSocial,
           service: widget.service,
         ),
       ),
@@ -946,6 +990,80 @@ class _FormularioSolicitudScreenState extends State<FormularioSolicitudScreen> {
                 return null;
               },
             ),
+            if (widget.producto.isViviendaSocial) ...[
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Icon(Icons.home_work_outlined, size: 20, color: accentColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Vivienda de Interés Social (VIS)',
+                    style: GoogleFonts.manrope(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                key: const Key('formulario_valor_vivienda_field'),
+                controller: _valorViviendaCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Valor comercial de la vivienda (Bs.) *',
+                  hintText: 'Ej. 350000.00',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Ingrese el valor de la vivienda';
+                  }
+                  final numVal = double.tryParse(val.trim());
+                  if (numVal == null || numVal <= 0) {
+                    return 'El valor debe ser mayor a 0';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                key: const Key('formulario_tipo_inmueble_field'),
+                initialValue: _tipoInmueble,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Tipo de inmueble *',
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'CASA', child: Text('Casa')),
+                  DropdownMenuItem(
+                      value: 'DEPARTAMENTO', child: Text('Departamento')),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _tipoInmueble = val);
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                key: const Key('formulario_unica_vivienda_field'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Declaro que es mi única vivienda',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Requisito normativo ASFI para crédito de vivienda de interés social.',
+                  style: TextStyle(fontSize: 11),
+                ),
+                value: _unicaVivienda,
+                activeThumbColor: accentColor,
+                onChanged: (val) => setState(() => _unicaVivienda = val),
+              ),
+            ],
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -979,6 +1097,7 @@ class ResumenSolicitudScreen extends StatefulWidget {
   final String destino;
   final String? destinoDetalle;
   final DatosDeclarados datosDeclarados;
+  final ViviendaSocialData? viviendaSocial;
   final SocioService? service;
 
   const ResumenSolicitudScreen({
@@ -990,6 +1109,7 @@ class ResumenSolicitudScreen extends StatefulWidget {
     required this.destino,
     this.destinoDetalle,
     required this.datosDeclarados,
+    this.viviendaSocial,
     this.service,
   });
 
@@ -1015,6 +1135,7 @@ class _ResumenSolicitudScreenState extends State<ResumenSolicitudScreen> {
       destination: widget.destino,
       destinationDetail: widget.destinoDetalle,
       declaredData: widget.datosDeclarados,
+      viviendaSocial: widget.viviendaSocial,
     );
 
     if (!mounted) {
@@ -1127,6 +1248,27 @@ class _ResumenSolicitudScreenState extends State<ResumenSolicitudScreen> {
                     '${widget.datosDeclarados.ingresoMensual} ${widget.producto.moneda}'),
                 _summaryRow('Egreso mensual:',
                     '${widget.datosDeclarados.egresoMensual} ${widget.producto.moneda}'),
+                if (widget.viviendaSocial != null) ...[
+                  const Divider(height: 20),
+                  Text(
+                    'Vivienda de Interés Social (VIS)',
+                    style: GoogleFonts.manrope(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: textColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _summaryRow('Valor vivienda:',
+                      '${widget.viviendaSocial!.valorVivienda} Bs.'),
+                  _summaryRow(
+                      'Tipo inmueble:',
+                      widget.viviendaSocial!.tipoInmueble == 'CASA'
+                          ? 'Casa'
+                          : 'Departamento'),
+                  _summaryRow('Única vivienda:',
+                      widget.viviendaSocial!.unicaVivienda ? 'Sí' : 'No'),
+                ],
               ],
             ),
           ),
