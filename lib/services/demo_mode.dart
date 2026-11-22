@@ -1275,7 +1275,49 @@ class DemoSocioData {
 
   Future<List<RecreditOffer>> offers() async {
     await Future<void>.delayed(_delay);
-    return const [];
+    return [
+      RecreditOffer.fromJson({
+        'id': 1,
+        'producto': {
+          'id': 1,
+          'codigo': 'PEQ',
+          'nombre': 'Crédito Emprendedor',
+        },
+        'moneda': 'BOB',
+        'monto_sugerido': '25000.00',
+        'plazo_meses': 24,
+        'tasa_interes': '12.50',
+        'cuota_estimada': '1182.80',
+        'fecha_vencimiento': '2026-12-31',
+        'fecha_generacion': '2026-11-01',
+        'estado': 'VIGENTE',
+        'nivel_riesgo': 'BAJO',
+        'motivos': [
+          'Excelente historial de pagos',
+          'Capacidad de endeudamiento favorable',
+        ],
+      }),
+      RecreditOffer.fromJson({
+        'id': 2,
+        'producto': {
+          'id': 2,
+          'codigo': 'AGR',
+          'nombre': 'Crédito Agrícola',
+        },
+        'moneda': 'BOB',
+        'monto_sugerido': '40000.00',
+        'plazo_meses': 36,
+        'tasa_interes': '11.80',
+        'cuota_estimada': '1324.50',
+        'fecha_vencimiento': '2027-01-15',
+        'fecha_generacion': '2026-11-15',
+        'estado': 'VIGENTE',
+        'nivel_riesgo': 'BAJO',
+        'motivos': [
+          'Garantía registrada al día',
+        ],
+      }),
+    ];
   }
 
   Future<List<ProductoCreditoSocio>> creditProducts() async {

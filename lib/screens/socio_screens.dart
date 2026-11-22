@@ -2294,22 +2294,55 @@ class _RecreditosScreenState extends State<RecreditosScreen> {
                 padding: const EdgeInsets.all(16),
                 children: result.value!
                     .map((offer) => Card(
-                        child: ListTile(
-                            title: Text('Oferta ${offer.id}'),
-                            subtitle: Text(
-                                '${offer.amount} · ${offer.termMonths} meses'),
-                            trailing: PopupMenuButton<String>(
-                                onSelected: (value) => value == 'accept'
-                                    ? _accept(offer)
-                                    : _discard(offer),
-                                itemBuilder: (_) => const [
-                                      PopupMenuItem(
-                                          value: 'accept',
-                                          child: Text('Aceptar')),
-                                      PopupMenuItem(
-                                          value: 'discard',
-                                          child: Text('Descartar'))
-                                    ]))))
+                        child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 4),
+                            child: ListTile(
+                                title: Text(
+                                    offer.productName.isNotEmpty
+                                        ? offer.productName
+                                        : 'Oferta ${offer.id}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold)),
+                                subtitle: Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (offer.productName.isNotEmpty)
+                                            Text('Oferta ${offer.id}'),
+                                          Text(
+                                            offer.currency.isNotEmpty
+                                                ? '${offer.amount} ${offer.currency}'
+                                                : offer.amount,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w600),
+                                          ),
+                                          Text('${offer.termMonths} meses'),
+                                          if (offer.interestRate.isNotEmpty)
+                                            Text(
+                                                'Tasa: ${offer.interestRate}% anual'),
+                                          if (offer.estimatedInstallment
+                                              .isNotEmpty)
+                                            Text(
+                                                'Cuota estimada: ${offer.estimatedInstallment}${offer.currency.isNotEmpty ? " ${offer.currency}" : ""}'),
+                                          if (offer.validUntil != null)
+                                            Text(
+                                                'Vigente hasta ${offer.formattedValidUntil}'),
+                                        ])),
+                                trailing: PopupMenuButton<String>(
+                                    onSelected: (value) => value == 'accept'
+                                        ? _accept(offer)
+                                        : _discard(offer),
+                                    itemBuilder: (_) => const [
+                                          PopupMenuItem(
+                                              value: 'accept',
+                                              child: Text('Aceptar')),
+                                          PopupMenuItem(
+                                              value: 'discard',
+                                              child: Text('Descartar'))
+                                        ])))))
                     .toList());
           }));
   Future<void> _accept(RecreditOffer offer) async {

@@ -429,20 +429,63 @@ class RecreditOffer {
   final int id;
   final String amount;
   final int termMonths;
+  final String productName;
+  final String currency;
+  final String interestRate;
+  final String estimatedInstallment;
+  final DateTime? validUntil;
 
   const RecreditOffer({
     required this.data,
     required this.id,
     required this.amount,
     required this.termMonths,
+    this.productName = '',
+    this.currency = '',
+    this.interestRate = '',
+    this.estimatedInstallment = '',
+    this.validUntil,
   });
 
-  factory RecreditOffer.fromJson(Map<String, dynamic> json) => RecreditOffer(
-        data: json,
-        id: _int(json['id']),
-        amount: _string(json['monto']),
-        termMonths: _int(json['plazo_meses']),
-      );
+  String get formattedValidUntil {
+    if (validUntil == null) return '';
+    final d = validUntil!.day.toString().padLeft(2, '0');
+    final m = validUntil!.month.toString().padLeft(2, '0');
+    final y = validUntil!.year.toString().padLeft(4, '0');
+    return '$d/$m/$y';
+  }
+
+  factory RecreditOffer.fromJson(Map<String, dynamic> json) {
+    String extractProductName() {
+      final p = json['producto'];
+      if (p is Map) return _string(p['nombre']);
+      if (p is String) return p;
+      return _string(json['producto_nombre']);
+    }
+
+    DateTime? extractValidUntil() {
+      final raw = json['fecha_vencimiento'] ?? json['fecha_vigencia'];
+      if (raw == null) return null;
+      if (raw is DateTime) return raw;
+      final str = _string(raw).trim();
+      if (str.isEmpty) return null;
+      return DateTime.tryParse(str);
+    }
+
+    final rawAmount = json['monto_sugerido'] ?? json['monto'];
+
+    return RecreditOffer(
+      data: json,
+      id: _int(json['id']),
+      amount: _string(rawAmount),
+      termMonths: _int(json['plazo_meses'] ?? json['plazo']),
+      productName: extractProductName(),
+      currency: _string(json['moneda']),
+      interestRate: _string(json['tasa_interes'] ?? json['tasa']),
+      estimatedInstallment: _string(json['cuota_estimada'] ?? json['cuota']),
+      validUntil: extractValidUntil(),
+    );
+  }
 }
 
 class SocioPerfil {
