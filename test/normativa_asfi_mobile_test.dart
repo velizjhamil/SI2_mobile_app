@@ -331,12 +331,18 @@ void main() {
         'respuesta': 'Se procedió al reembolso',
         'procedente': true,
         'fecha_respuesta': '2026-11-15T15:00:00',
+        'ampliaciones': 2,
+        'motivo_ampliacion': 'Se requiere informe de auditoría externa',
+        'notificado_asfi': true,
       });
 
       expect(reclamo.numeroReclamo, 'PR-2026-000001');
       expect(reclamo.tipoLabel, 'Cobro Indebido');
       expect(reclamo.isRespondido, isTrue);
       expect(reclamo.procedente, isTrue);
+      expect(reclamo.ampliaciones, 2);
+      expect(reclamo.motivoAmpliacion, 'Se requiere informe de auditoría externa');
+      expect(reclamo.notificadoAsfi, isTrue);
 
       final repro = ReprogramacionCreditoItem.fromJson({
         'id': 20,
@@ -348,6 +354,8 @@ void main() {
         'nuevo_plazo_meses': 36,
         'saldo_capital': '30000.00',
         'interes_diferido': '450.00',
+        'interes_corrido': '120.00',
+        'seguro_diferido': '45.00',
         'mora_condonada': '80.00',
         'plazo_anterior': 24,
         'cuotas_reprogramadas': 3,
@@ -358,6 +366,8 @@ void main() {
       expect(repro.isAprobada, isTrue);
       expect(repro.nuevoPlazoMeses, 36);
       expect(repro.interesDiferido, '450.00');
+      expect(repro.interesCorrido, '120.00');
+      expect(repro.seguroDiferido, '45.00');
     });
   });
 
@@ -635,6 +645,9 @@ void main() {
           respuesta: 'Se revertirá el monto de Bs. 50.',
           procedente: true,
           fechaRespuesta: '2026-11-15T10:00:00',
+          ampliaciones: 1,
+          motivoAmpliacion: 'Peritaje técnico en curso',
+          notificadoAsfi: true,
         ),
         const ReclamoItem(
           id: 2,
@@ -657,6 +670,9 @@ void main() {
       expect(find.text('PR-2026-000001'), findsOneWidget);
       expect(find.text('PR-2026-000002'), findsOneWidget);
       expect(find.textContaining('Cobro Indebido'), findsOneWidget);
+      expect(find.textContaining('Plazo ampliado (1 ampliación)'), findsOneWidget);
+      expect(find.textContaining('Comunicado a ASFI'), findsOneWidget);
+      expect(find.textContaining('Peritaje técnico en curso'), findsOneWidget);
       expect(find.text('Plazo legal vencido (> 5 días hábiles sin respuesta)'), findsOneWidget);
       expect(find.text('Respuesta de la Entidad'), findsOneWidget);
       expect(find.text('PROCEDENTE'), findsOneWidget);
@@ -690,6 +706,8 @@ void main() {
           nuevoPlazoMeses: 24,
           saldoCapital: '45000.00',
           interesDiferido: '500.00',
+          interesCorrido: '150.00',
+          seguroDiferido: '60.00',
           cuotasReprogramadas: 2,
           fechaSolicitud: '2026-11-10T10:00:00',
           fechaResolucion: '2026-11-12T10:00:00',
@@ -716,6 +734,8 @@ void main() {
       expect(find.text('APROBADA'), findsOneWidget);
       expect(find.text('Nuevo plazo solicitado: 24 meses'), findsOneWidget);
       expect(find.text('Interés diferido (1° cuota): Bs. 500.00'), findsOneWidget);
+      expect(find.text('Interés corrido: Bs. 150.00'), findsOneWidget);
+      expect(find.text('Seguro diferido (1° cuota): Bs. 60.00'), findsOneWidget);
 
       // Tap on Nueva Solicitud
       final newBtn = find.byKey(const Key('solicitar_reprogramacion_btn'));

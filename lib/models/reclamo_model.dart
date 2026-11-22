@@ -23,6 +23,9 @@ class ReclamoItem {
   final String? motivoDisconformidad;
   final String? fechaCierre;
   final String? fechaEscalamiento;
+  final int ampliaciones;
+  final String? motivoAmpliacion;
+  final bool notificadoAsfi;
 
   const ReclamoItem({
     required this.id,
@@ -45,6 +48,9 @@ class ReclamoItem {
     this.motivoDisconformidad,
     this.fechaCierre,
     this.fechaEscalamiento,
+    this.ampliaciones = 0,
+    this.motivoAmpliacion,
+    this.notificadoAsfi = false,
   });
 
   bool get isRegistrado => estado == 'REGISTRADO';
@@ -95,5 +101,8 @@ class ReclamoItem {
         motivoDisconformidad: json['motivo_disconformidad']?.toString(),
         fechaCierre: json['fecha_cierre']?.toString(),
         fechaEscalamiento: json['fecha_escalamiento']?.toString(),
+        ampliaciones: _int(json['ampliaciones']),
+        motivoAmpliacion: json['motivo_ampliacion']?.toString(),
+        notificadoAsfi: json['notificado_asfi'] == true,
       );
 }

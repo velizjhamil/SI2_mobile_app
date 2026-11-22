@@ -12,6 +12,8 @@ class ReprogramacionCreditoItem {
   final int nuevoPlazoMeses;
   final String saldoCapital;
   final String? interesDiferido;
+  final String? interesCorrido;
+  final String? seguroDiferido;
   final String? moraCondonada;
   final int? plazoAnterior;
   final int? cuotasReprogramadas;
@@ -29,6 +31,8 @@ class ReprogramacionCreditoItem {
     required this.nuevoPlazoMeses,
     required this.saldoCapital,
     this.interesDiferido,
+    this.interesCorrido,
+    this.seguroDiferido,
     this.moraCondonada,
     this.plazoAnterior,
     this.cuotasReprogramadas,
@@ -52,6 +56,8 @@ class ReprogramacionCreditoItem {
         nuevoPlazoMeses: _int(json['nuevo_plazo_meses']),
         saldoCapital: _string(json['saldo_capital']),
         interesDiferido: json['interes_diferido']?.toString(),
+        interesCorrido: json['interes_corrido']?.toString(),
+        seguroDiferido: json['seguro_diferido']?.toString(),
         moraCondonada: json['mora_condonada']?.toString(),
         plazoAnterior: json['plazo_anterior'] != null
             ? _int(json['plazo_anterior'])

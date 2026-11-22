@@ -454,6 +454,16 @@ class _ReprogramacionScreenState extends State<ReprogramacionScreen> {
                                     'Interés diferido (1° cuota): Bs. ${item.interesDiferido}',
                                     style: const TextStyle(fontSize: 12),
                                   ),
+                                if (item.interesCorrido != null)
+                                  Text(
+                                    'Interés corrido: Bs. ${item.interesCorrido}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                if (item.seguroDiferido != null)
+                                  Text(
+                                    'Seguro diferido (1° cuota): Bs. ${item.seguroDiferido}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
                                 if (item.moraCondonada != null)
                                   Text(
                                     'Mora condonada: Bs. ${item.moraCondonada}',

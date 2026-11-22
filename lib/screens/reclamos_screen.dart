@@ -688,8 +688,88 @@ class _ReclamosScreenState extends State<ReclamosScreen> {
                                       : FontWeight.normal,
                                 ),
                               ),
+                            if (item.ampliaciones > 0)
+                              Text(
+                                '· (+${item.ampliaciones} amp.)',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blue[700] ?? Colors.blue,
+                                ),
+                              ),
                           ],
                         ),
+                        if (item.ampliaciones > 0) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.blue.withValues(alpha: 0.25),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.more_time,
+                                        size: 14, color: Colors.blue),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Plazo ampliado (${item.ampliaciones} ${item.ampliaciones == 1 ? "ampliación" : "ampliaciones"})',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue[800] ?? Colors.blue,
+                                      ),
+                                    ),
+                                    if (item.notificadoAsfi) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.purple
+                                              .withValues(alpha: 0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Comunicado a ASFI',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.purple[800] ??
+                                                Colors.purple,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                if (item.motivoAmpliacion != null &&
+                                    item.motivoAmpliacion!.isNotEmpty) ...[
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Motivo ampliación: ${item.motivoAmpliacion}',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
                         if (item.vencido) ...[
                           const SizedBox(height: 8),
                           Container(
